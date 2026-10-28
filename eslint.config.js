@@ -16,7 +16,7 @@ const appGlobals = Object.fromEntries([
   'showView', 'selectWard', 'renderWardsSidebar', 'toggleSelectionMode', 'togglePharmacyMode', 'togglePatientSelection',
   'updateFloatingActionBar', 'toggleHighlight', 'normalizeSearch', 'formatRelative', 'formatDateLong', 'driveImageUrl',
   'applyChartTheme', 'closeSettingsModal', 'addNewWard', 'quickAddStandardSections', 'confirmDialog', 'promptDialog', 'toast',
-  'apiPost', 'loadLib', 'Modals', 'Auth', 'Sync', 'Chart', 'XLSX', 'Papa', 'syncAfterChange', 'pcsNormalizeDateField', 'pcsDayName', 'openAddModal', 'openEditPatient', 'saveToLocalStorage',
+  'apiPost', 'loadLib', 'loadLocalAsset', 'Modals', 'Auth', 'Sync', 'Chart', 'XLSX', 'Papa', 'syncAfterChange', 'pcsNormalizeDateField', 'pcsDayName', 'openAddModal', 'openEditPatient', 'saveToLocalStorage',
   'showToast', 'updateDateDropdown', 'renderDashboard', 'renderCalendar', 'uploadFileToBackend',
 ].map(n => [n, 'writable']));
 
