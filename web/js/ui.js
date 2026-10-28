@@ -251,8 +251,9 @@ function openWard(name) {
 }
 
 function selectWard(wardName) {
+    // Selection belongs to one ward: clear it on a ward switch, keep it when the same ward re-renders.
+    if (appData.selectionMode && wardName !== appData.currentWard) { appData.selectedPatientIds.clear(); updateFloatingActionBar(); }
     appData.currentWard = wardName;
-    if (appData.selectionMode) { appData.selectedPatientIds.clear(); updateFloatingActionBar(); }
     document.getElementById('current-ward-title').textContent = wardName;
     if (currentView === 'board') setTopbarTitle(wardName);
     renderWardsSidebar();
