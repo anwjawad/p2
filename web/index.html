@@ -1,0 +1,2107 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Palliative Rounds</title>
+    <meta name="description" content="Daily ward rounds board for the palliative care team: patients by ward, symptoms, labs, medications and plans.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="theme-color" content="#f3f5f4" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0f1110" media="(prefers-color-scheme: dark)">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Rounds">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+    <link rel="apple-touch-icon" href="icons/icon-180.png">
+    <script>
+        // Apply saved appearance before first paint (no theme flash).
+        (function () {
+            try {
+                var d = document.documentElement, t = localStorage.getItem('app_theme');
+                if (t === 'light' || t === 'dark') d.setAttribute('data-theme', t);
+                d.setAttribute('data-density', localStorage.getItem('app_density') || 'comfortable');
+                if (localStorage.getItem('app_animations') === 'false') d.setAttribute('data-motion', 'off');
+            } catch (e) { }
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Icons are not needed for first paint; the Port Cath module loads when its view opens -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" media="print" onload="this.media='all'" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"></noscript>
+
+    <script src="js/config.js"></script>
+    <script defer src="js/core.js"></script>
+    <script defer src="js/patient-renderer.js"></script>
+    <script defer src="js/main.js"></script>
+    <script defer src="js/ui.js"></script>
+    <script defer src="js/notes.js"></script>
+    <script defer src="js/cath-studio-adapter.js"></script>
+</head>
+
+<body>
+    <a href="#main-content" class="skip-link">Skip to patients</a>
+    <div id="net-banner" class="net-banner" role="status" hidden></div>
+
+    <div class="app">
+        <!-- ============ Sidebar: wards + workspace ============ -->
+        <aside id="sidebar" class="sidebar" aria-label="Wards and tools">
+            <div class="sidebar-head">
+                <a class="brand" href="./" aria-label="Palliative Rounds, home">
+                    <span class="brand-mark" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5s-7.5-4.4-7.5-10.3A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.5 2.6c0 5.9-7.5 10.3-7.5 10.3z"/><path d="M8 12.5h2.2l1.2-2.2 1.6 4 1.1-1.8H16"/></svg>
+                    </span>
+                    <span>
+                        <span class="brand-name block">Palliative Rounds</span>
+                        <span class="brand-sub block" id="brand-date">Ward board</span>
+                    </span>
+                </a>
+                <button class="icon-btn drawer-close" onclick="toggleSidebar(false)" aria-label="Close menu" data-mobile-only>
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+            </div>
+
+            <div class="search-box" role="search">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                <label for="search-input" class="sr-only">Search all patients</label>
+                <input type="search" id="search-input" placeholder="Search name, file no., diagnosis" autocomplete="off" spellcheck="false" dir="auto" enterkeyhint="search">
+                <span class="kbd" aria-hidden="true">/</span>
+            </div>
+
+            <nav class="sidebar-scroll" aria-label="Main">
+                <div class="nav-group">
+                    <div class="nav-group-head">
+                        <h2 class="nav-group-title" id="wards-heading">Wards</h2>
+                        <div class="flex gap-0.5">
+                            <button onclick="quickAddStandardSections()" class="icon-btn icon-btn-sm" title="Add the standard wards" aria-label="Add the standard wards">
+                                <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+                            </button>
+                            <button onclick="addNewWard()" class="icon-btn icon-btn-sm" title="New ward" aria-label="New ward">
+                                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <ul id="wards-list" class="grid gap-0.5" aria-labelledby="wards-heading">
+                        <li><div class="skeleton h-10"></div></li>
+                        <li><div class="skeleton h-10 opacity-70"></div></li>
+                        <li><div class="skeleton h-10 opacity-40"></div></li>
+                    </ul>
+                </div>
+
+                <div class="nav-group">
+                    <div class="nav-group-head"><h2 class="nav-group-title">Workspace</h2></div>
+                    <button class="nav-item" data-nav="board" onclick="showBoard()"><i class="fa-solid fa-bed-pulse" aria-hidden="true"></i> Ward board</button>
+                    <button class="nav-item" data-nav="notes" onclick="openNotesView()"><i class="fa-regular fa-note-sticky" aria-hidden="true"></i> Notes</button>
+                    <button class="nav-item" data-nav="history" onclick="openHistoryView()"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i> Past rounds</button>
+                    <button class="nav-item" data-nav="analytics" onclick="openAnalyticsView()"><i class="fa-solid fa-chart-line" aria-hidden="true"></i> Analytics</button>
+                    <button class="nav-item" data-nav="portcath" onclick="openCathStudioView()"><i class="fa-solid fa-syringe" aria-hidden="true"></i> Port cath list</button>
+                </div>
+
+                <div class="nav-group">
+                    <div class="nav-group-head"><h2 class="nav-group-title">Tools</h2></div>
+                    <button class="nav-item" onclick="openAIHub()"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> AI assistant</button>
+                    <button class="nav-item" onclick="openCalculatorModal()"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Opioid calculator</button>
+                    <button class="nav-item" onclick="openImportModal()"><i class="fa-solid fa-file-import" aria-hidden="true"></i> Import patients</button>
+                    <button class="nav-item" onclick="printMedications()"><i class="fa-solid fa-print" aria-hidden="true"></i> Print medication list</button>
+                    <button class="nav-item" onclick="openResourcesModal()"><i class="fa-regular fa-folder-open" aria-hidden="true"></i> Shared resources</button>
+                </div>
+            </nav>
+
+            <div class="sidebar-foot">
+                <div class="sync-pill" id="sync-pill" data-state="idle" role="status" aria-live="polite">
+                    <span class="sync-dot" aria-hidden="true"></span><span id="sync-text">Connecting…</span>
+                </div>
+                <button class="icon-btn" onclick="openSettingsModal()" aria-label="Settings" title="Settings">
+                    <i class="fa-solid fa-gear" aria-hidden="true"></i>
+                </button>
+            </div>
+        </aside>
+        <div id="sidebar-overlay" class="scrim" hidden onclick="toggleSidebar(false)"></div>
+
+        <!-- ============ Workspace ============ -->
+        <div class="workspace">
+            <header class="topbar">
+                <button class="icon-btn" onclick="toggleSidebar(true)" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false" id="btn-menu">
+                    <i class="fa-solid fa-bars" aria-hidden="true"></i>
+                </button>
+                <div class="topbar-title" id="topbar-title" aria-hidden="true">Palliative Rounds</div>
+                <button class="icon-btn" onclick="focusSearch()" aria-label="Search patients">
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                </button>
+                <button class="icon-btn" onclick="openSettingsModal()" aria-label="Settings">
+                    <i class="fa-solid fa-gear" aria-hidden="true"></i>
+                </button>
+            </header>
+
+            <main id="main-content" class="main" tabindex="-1">
+                <!-- Ward board -->
+                <section id="patient-grid-container" class="view" data-view="board" aria-labelledby="current-ward-title">
+                    <div id="archive-banner" class="archive-banner" role="status" hidden>
+                        <i class="fa-solid fa-box-archive" aria-hidden="true"></i>
+                        <span>Viewing the archived round of <b id="archive-date-display">—</b>. Read-only.</span>
+                        <button onclick="exitHistoryMode()" class="btn btn-secondary btn-sm">Back to today</button>
+                    </div>
+
+                    <header class="page-head">
+                        <div class="min-w-0">
+                            <h1 id="current-ward-title" class="page-title bidi">Loading wards…</h1>
+                            <p class="census" id="ward-census" aria-live="polite">
+                                <span><b id="patient-count">–</b> patients</span>
+                            </p>
+                        </div>
+                        <div class="page-actions">
+                            <div class="segmented" role="group" aria-label="Board layout">
+                                <button id="btn-rounds-mode" aria-pressed="true" onclick="appData.pharmacyMode && togglePharmacyMode()"><i class="fa-solid fa-stethoscope" aria-hidden="true"></i> Rounds</button>
+                                <button id="btn-pharmacy-mode" aria-pressed="false" onclick="!appData.pharmacyMode && togglePharmacyMode()"><i class="fa-solid fa-prescription-bottle-medical" aria-hidden="true"></i> Pharmacy</button>
+                            </div>
+                            <button id="btn-select-mode" onclick="toggleSelectionMode()" class="btn btn-secondary" aria-pressed="false">
+                                <i class="fa-solid fa-check-double" aria-hidden="true"></i> <span>Select</span>
+                            </button>
+                            <button onclick="openNewPatientModal()" class="btn btn-primary btn-new">
+                                <i class="fa-solid fa-plus" aria-hidden="true"></i> New patient
+                            </button>
+                        </div>
+                    </header>
+
+                    <div id="ward-chips" class="ward-chips" aria-label="Switch ward"></div>
+
+                    <div id="patients-grid" class="board" role="list" aria-labelledby="current-ward-title" aria-busy="true">
+                        <div class="skeleton bed-skeleton"></div>
+                        <div class="skeleton bed-skeleton opacity-80"></div>
+                        <div class="skeleton bed-skeleton opacity-60"></div>
+                    </div>
+
+                    <div id="empty-state" class="empty" hidden></div>
+                </section>
+
+                <!-- Notes -->
+                <section id="notes-view" class="view hidden" data-view="notes" aria-labelledby="notes-title">
+                    <div class="view-head">
+                        <h1 id="notes-title" class="page-title">Notes</h1>
+                        <button onclick="openNoteEditor()" class="btn btn-primary">
+                            <i class="fa-solid fa-plus" aria-hidden="true"></i> New note
+                        </button>
+                    </div>
+                    <div class="toolbar mb-5">
+                        <div class="search-box" role="search">
+                            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                            <label for="notes-search" class="sr-only">Search notes</label>
+                            <input type="search" id="notes-search" placeholder="Search notes" dir="auto">
+                        </div>
+                        <label for="notes-filter-type" class="sr-only">Filter by type</label>
+                        <select id="notes-filter-type" class="select w-auto">
+                            <option value="all">All types</option>
+                            <option value="meeting">Meeting</option>
+                            <option value="study">Study</option>
+                            <option value="pearl">Clinical pearl</option>
+                            <option value="guideline">Guideline</option>
+                        </select>
+                        <span id="notes-sync-status" class="text-sm text-slate-500" role="status" aria-live="polite"></span>
+                    </div>
+                    <div id="notes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 items-start"></div>
+                    <div id="notes-empty-state" class="empty hidden">
+                        <div class="empty-icon"><i class="fa-regular fa-note-sticky" aria-hidden="true"></i></div>
+                        <h2>No notes yet</h2>
+                        <p>Keep meeting minutes, teaching points and guidelines next to the ward board.</p>
+                        <button class="btn btn-secondary" onclick="openNoteEditor()"><i class="fa-solid fa-plus" aria-hidden="true"></i> Write the first note</button>
+                    </div>
+                </section>
+
+                <!-- Analytics -->
+                <section id="analytics-view" class="view hidden" data-view="analytics" aria-labelledby="analytics-title">
+                    <div class="view-head">
+                        <h1 id="analytics-title" class="page-title">Analytics</h1>
+                        <div class="flex gap-2">
+                            <button onclick="refreshAnalytics()" class="btn btn-secondary"><i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Refresh</button>
+                            <button onclick="closeAnalyticsView()" class="btn btn-ghost">Back to board</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div class="panel">
+                            <h2><i class="fa-solid fa-users" aria-hidden="true"></i> Census, last 30 archived days</h2>
+                            <div class="h-64 relative"><canvas id="chart-census" aria-label="Patient census chart" role="img"></canvas></div>
+                        </div>
+                        <div class="panel">
+                            <h2><i class="fa-solid fa-heart-pulse" aria-hidden="true"></i> Symptom prevalence, current patients</h2>
+                            <div class="h-64 relative"><canvas id="chart-symptoms" aria-label="Symptom prevalence chart" role="img"></canvas></div>
+                        </div>
+                        <div class="panel lg:col-span-2">
+                            <h2><i class="fa-solid fa-clipboard-user" aria-hidden="true"></i> Diagnoses, current patients</h2>
+                            <div class="h-64 relative"><canvas id="chart-diagnosis" aria-label="Diagnosis distribution chart" role="img"></canvas></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Port cath -->
+                <section id="cath-studio-view" class="view hidden" data-view="portcath" aria-label="Port cath list">
+                    <button onclick="closeCathStudioView()" class="btn btn-ghost btn-sm mb-3">
+                        <i class="fa-solid fa-arrow-left rtl:rotate-180" aria-hidden="true"></i> Back to board
+                    </button>
+                    <section id="tab-portcath"></section>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Phone navigation -->
+    <nav class="bottom-nav" aria-label="Primary">
+        <button class="bn-item" data-nav="board" onclick="showBoard()"><i class="fa-solid fa-bed-pulse" aria-hidden="true"></i>Board</button>
+        <button class="bn-item" data-nav="notes" onclick="openNotesView()"><i class="fa-regular fa-note-sticky" aria-hidden="true"></i>Notes</button>
+        <button class="bn-new" onclick="openNewPatientModal()" aria-label="New patient"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
+        <button class="bn-item" data-nav="history" onclick="openHistoryView()"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>History</button>
+        <button class="bn-item" onclick="toggleSidebar(true)"><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i>More</button>
+    </nav>
+
+    <!-- Bulk actions -->
+    <div id="floating-action-bar" class="selection-bar" role="toolbar" aria-label="Selected patients">
+        <span class="count"><span id="selected-count">0</span> selected</span>
+        <button onclick="executeBulkMove()" class="btn"><i class="fa-solid fa-right-left" aria-hidden="true"></i> Move</button>
+        <button onclick="executeBulkDelete()" class="btn btn-danger"><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Remove</button>
+    </div>
+
+    <div id="toast-region" class="toast-region" aria-live="polite" aria-relevant="additions"></div>
+
+    <!-- Access code (only when the backend has APP_ACCESS_CODE set) -->
+    <div id="lock-screen" class="lock" hidden>
+        <form class="lock-card" id="lock-form" novalidate>
+            <span class="brand-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5s-7.5-4.4-7.5-10.3A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.5 2.6c0 5.9-7.5 10.3-7.5 10.3z"/><path d="M8 12.5h2.2l1.2-2.2 1.6 4 1.1-1.8H16"/></svg>
+            </span>
+            <div>
+                <h1 id="lock-title">Sign in to Palliative Rounds</h1>
+                <p id="lock-text">Enter the team access code to open the ward board.</p>
+            </div>
+            <div class="field">
+                <label class="field-label" for="lock-code">Access code</label>
+                <input class="input" id="lock-code" type="password" autocomplete="current-password" required aria-describedby="lock-error">
+                <p class="field-error" id="lock-error" role="alert"></p>
+            </div>
+            <label class="flex items-center gap-2 text-sm text-slate-600">
+                <input type="checkbox" id="lock-remember"> Keep me signed in on this device
+            </label>
+            <button class="btn btn-primary btn-lg btn-block" type="submit" id="lock-submit">Open ward board</button>
+        </form>
+    </div>
+    <!-- Section/Ward Creator Modal -->
+    <div id="section-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="closeSectionModal()"></div>
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative z-10 animate-entry">
+            <h3 class="text-xl font-bold text-slate-800 mb-4">Create New Section</h3>
+
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Section Name</label>
+            <input type="text" id="new-section-name"
+                class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mb-4 focus:ring-2 focus:ring-medical-500 outline-none"
+                placeholder="e.g. ICU, Surgical Ward A">
+
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Color Theme</label>
+            <div class="flex gap-2 mb-4" role="group" aria-label="Ward color theme">
+                <button onclick="selectSectionColor('slate')" aria-label="Slate color"
+                    class="w-9 h-9 rounded-full bg-slate-400 ring-2 ring-offset-2 ring-slate-400 section-color-btn"
+                    data-color="slate"></button>
+                <button onclick="selectSectionColor('blue')" aria-label="Blue color"
+                    class="w-9 h-9 rounded-full bg-blue-400 bg-opacity-50 ring-offset-2 section-color-btn"
+                    data-color="blue"></button>
+                <button onclick="selectSectionColor('red')" aria-label="Red color"
+                    class="w-9 h-9 rounded-full bg-red-400 bg-opacity-50 ring-offset-2 section-color-btn"
+                    data-color="red"></button>
+                <button onclick="selectSectionColor('green')" aria-label="Green color"
+                    class="w-9 h-9 rounded-full bg-emerald-400 bg-opacity-50 ring-offset-2 section-color-btn"
+                    data-color="green"></button>
+                <button onclick="selectSectionColor('purple')" aria-label="Purple color"
+                    class="w-9 h-9 rounded-full bg-violet-400 bg-opacity-50 ring-offset-2 section-color-btn"
+                    data-color="purple"></button>
+                <button onclick="selectSectionColor('orange')" aria-label="Orange color"
+                    class="w-9 h-9 rounded-full bg-orange-400 bg-opacity-50 ring-offset-2 section-color-btn"
+                    data-color="orange"></button>
+            </div>
+
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Icon</label>
+            <div class="grid grid-cols-5 gap-2 mb-6">
+                <button onclick="selectSectionIcon('hospital')"
+                    class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 section-icon-btn ring-2 ring-slate-400"
+                    data-icon="hospital"><i class="fa-solid fa-hospital"></i></button>
+                <button onclick="selectSectionIcon('bed-pulse')"
+                    class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 section-icon-btn"
+                    data-icon="bed-pulse"><i class="fa-solid fa-bed-pulse"></i></button>
+                <button onclick="selectSectionIcon('heart-pulse')"
+                    class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 section-icon-btn"
+                    data-icon="heart-pulse"><i class="fa-solid fa-heart-pulse"></i></button>
+                <button onclick="selectSectionIcon('syringe')"
+                    class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 section-icon-btn"
+                    data-icon="syringe"><i class="fa-solid fa-syringe"></i></button>
+                <button onclick="selectSectionIcon('user-doctor')"
+                    class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 section-icon-btn"
+                    data-icon="user-doctor"><i class="fa-solid fa-user-doctor"></i></button>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button onclick="closeSectionModal()"
+                    class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg">Cancel</button>
+                <button onclick="confirmAddSection()"
+                    class="px-6 py-2 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-700">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Add Sections Helper (Hidden by default, triggered by special button) -->
+    <!-- Plan Modal -->
+
+    <!-- ============ Patient sheet ============ -->
+    <div id="patient-modal" class="fixed inset-0 hidden" role="dialog" aria-modal="true" aria-labelledby="modal-patient-name" data-sheet>
+        <div class="absolute inset-0 dlg-backdrop" onclick="closeModal()"></div>
+        <div class="sheet translate-x-full" id="modal-panel">
+            <div class="sheet-head">
+                <div class="sheet-room">
+                    <label for="modal-patient-room">Room</label>
+                    <input type="text" id="modal-patient-room" class="unstyled" placeholder="—" autocomplete="off" maxlength="8">
+                </div>
+                <div class="min-w-0">
+                    <label for="modal-patient-name" class="sr-only">Patient name</label>
+                    <input type="text" id="modal-patient-name" class="sheet-name unstyled" placeholder="Patient name" dir="auto" autocomplete="off" required>
+                    <div class="sheet-sub">
+                        <span class="inline-field">
+                            <label for="modal-patient-code">File no.</label>
+                            <input type="text" id="modal-patient-code" class="unstyled" placeholder="—" autocomplete="off">
+                        </span>
+                        <span class="inline-field">
+                            <label for="modal-patient-age">Age</label>
+                            <input type="number" id="modal-patient-age" class="unstyled w-age" min="0" max="130" inputmode="numeric" placeholder="—">
+                        </span>
+                        <span id="modal-ward-label" class="inline-flex items-center gap-1.5 text-slate-500"></span>
+                    </div>
+                </div>
+                <div class="sheet-tools">
+                    <button onclick="handleManualSummary()" class="icon-btn" title="Copy a text summary" aria-label="Copy a text summary of this patient">
+                        <i class="fa-regular fa-copy" aria-hidden="true"></i>
+                    </button>
+                    <button onclick="handleStandaloneSummary()" class="icon-btn" title="AI summary" aria-label="Write an AI summary">
+                        <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+                    </button>
+                    <button onclick="closeModal()" class="icon-btn" aria-label="Close patient" title="Close (Esc)">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="sheet-body">
+                <div class="quick-tiles">
+                    <button class="tile t-labs" onclick="openLabsModal(appData.currentPatient)">
+                        <i class="fa-solid fa-flask" aria-hidden="true"></i>
+                        <span class="tile-title">Labs</span><span class="tile-sub" id="tile-labs-sub">Values and images</span>
+                    </button>
+                    <button class="tile t-sym" onclick="openSymptomsModal(appData.currentPatient)">
+                        <i class="fa-solid fa-notes-medical" aria-hidden="true"></i>
+                        <span class="tile-title">Symptoms</span><span class="tile-sub" id="tile-sym-sub">ECOG and symptom review</span>
+                    </button>
+                    <button class="tile t-plan" onclick="openPlanModal(appData.currentPatient)">
+                        <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                        <span class="tile-title">Plan</span><span class="tile-sub" id="tile-plan-sub">Meds, equipment, consults</span>
+                    </button>
+                    <button class="tile t-hist" onclick="appData.currentPatient && openPatientHistory(appData.currentPatient.id)">
+                        <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+                        <span class="tile-title">History</span><span class="tile-sub">Previous rounds</span>
+                    </button>
+                </div>
+
+                <section id="modal-plan-section" class="sheet-section hidden" aria-labelledby="plan-h">
+                    <div class="sheet-section-head"><h3 class="sheet-section-title" id="plan-h">Active plan</h3></div>
+                    <div id="modal-plan-list" class="grid gap-2"></div>
+                </section>
+
+                <div class="sheet-grid-2">
+                    <div class="field">
+                        <label class="field-label" for="inp-diagnosis">Diagnosis</label>
+                        <input id="inp-diagnosis" type="text" class="input" dir="auto" autocomplete="off">
+                    </div>
+                    <div class="field">
+                        <label class="field-label" for="inp-provider">Responsible doctor</label>
+                        <input id="inp-provider" type="text" class="input" dir="auto" autocomplete="off" list="provider-options">
+                        <datalist id="provider-options"></datalist>
+                    </div>
+                </div>
+
+                <section class="sheet-section">
+                    <div class="sheet-section-head">
+                        <label class="sheet-section-title" for="inp-treatment">Current treatment</label>
+                    </div>
+                    <textarea id="inp-treatment" rows="2" class="textarea" dir="auto"></textarea>
+                </section>
+
+                <section class="sheet-section" aria-labelledby="meds-h">
+                    <div class="sheet-section-head">
+                        <h3 class="sheet-section-title" id="meds-h">Medications</h3>
+                        <button onclick="openDischargePlanModal()" class="btn btn-ghost btn-sm">
+                            <i class="fa-solid fa-file-prescription" aria-hidden="true"></i> Discharge plan
+                        </button>
+                    </div>
+                    <div class="sheet-grid-2">
+                        <div class="field">
+                            <label class="field-label" for="inp-medications-regular">Regular</label>
+                            <textarea id="inp-medications-regular" rows="5" class="textarea meds" placeholder="One per line. Pasting from the HIS cleans the list." spellcheck="false" dir="auto"></textarea>
+                        </div>
+                        <div class="field">
+                            <label class="field-label" for="inp-medications-prn">As needed (PRN)</label>
+                            <textarea id="inp-medications-prn" rows="5" class="textarea meds" placeholder="One per line" spellcheck="false" dir="auto"></textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="sheet-section">
+                    <div class="sheet-section-head">
+                        <label class="sheet-section-title" for="inp-notes">Handover notes</label>
+                    </div>
+                    <textarea id="inp-notes" rows="4" class="textarea notes" placeholder="What the next shift needs to know" dir="auto"></textarea>
+                </section>
+            </div>
+
+            <div class="sheet-foot">
+                <span id="save-status" role="status" aria-live="polite"><i class="fa-solid fa-check text-green-600" aria-hidden="true"></i> Saved</span>
+                <span id="last-edited" class="tabular"></span>
+            </div>
+        </div>
+    </div>
+    <!-- Import Modal -->
+    <div id="import-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeImportModal()"></div>
+        <div
+            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-lg text-slate-800"><i
+                        class="fa-solid fa-file-csv text-green-600 mr-2"></i>Smart Import</h3>
+                <button onclick="closeImportModal()" class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" aria-label="Close import modal">
+                    <i class="fa-solid fa-times" aria-hidden="true"></i>
+                </button>
+            </div>
+
+            <div class="p-6">
+                <!-- Step 1: Upload -->
+                <div id="import-step-1" class="space-y-4">
+                    <div class="text-center py-6 border-2 border-dashed border-slate-200 rounded-xl hover:border-medical-400 hover:bg-slate-50 transition-colors cursor-pointer"
+                        onclick="document.getElementById('csv-file-input').click()">
+                        <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-300 mb-2"></i>
+                        <p class="text-slate-600 font-medium text-sm">Upload Excel / CSV (Multiple Allowed)</p>
+                        <input type="file" id="csv-file-input" class="hidden" accept=".csv, .xlsx, .xls" multiple
+                            onchange="handleFileSelect(event)">
+                    </div>
+
+                    <!-- File List Container -->
+                    <div id="import-file-list" class="space-y-2 max-h-60 overflow-y-auto hidden">
+                        <!-- File Items injected here -->
+                    </div>
+
+                    <!-- Step 1 Actions -->
+                    <div id="import-step-1-actions" class="hidden mt-4 text-right">
+                        <button onclick="showMappingStep()"
+                            class="bg-medical-600 hover:bg-medical-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+                            Continue to Mapping <i class="fa-solid fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+
+                    <div class="relative">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-slate-200"></div>
+                        </div>
+                        <div class="relative flex justify-center text-xs uppercase">
+                            <span class="bg-white px-2 text-slate-400">Or Paste Data</span>
+                        </div>
+                    </div>
+
+                    <textarea id="paste-input" rows="3"
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-medical-500 focus:outline-none"
+                        placeholder="Paste your Excel table here (Headers + Data)..."
+                        oninput="checkPasteInput()"></textarea>
+
+                    <button id="btn-process-paste" onclick="handlePaste()"
+                        class="w-full py-2 bg-slate-200 text-slate-400 font-bold text-sm rounded-lg cursor-not-allowed transition-colors"
+                        disabled>
+                        Process Pasted Data
+                    </button>
+                </div>
+
+                <!-- Step 2: Mapping -->
+                <div id="import-step-2" class="hidden space-y-4">
+                    <p class="text-sm text-slate-500 mb-2">Map columns from your CSV to the application fields.</p>
+                    <div class="max-h-60 overflow-y-auto border border-slate-200 rounded-lg">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+                                <tr>
+                                    <th class="px-4 py-2 w-1/2">App Field</th>
+                                    <th class="px-4 py-2 w-1/2">CSV Column</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mapping-table-body" class="divide-y divide-slate-100">
+                                <!-- Mapping rows injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Step 3: Loading -->
+                <div id="import-step-3" class="hidden text-center py-8">
+                    <i class="fa-solid fa-circle-notch fa-spin text-4xl text-medical-500 mb-4"></i>
+                    <p class="text-lg font-bold text-slate-800">Importing Patients...</p>
+                    <p class="text-slate-500 text-sm" id="import-status-text">Please wait</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 px-6 py-4 flex justify-end gap-3" id="import-footer">
+                <button onclick="closeImportModal()"
+                    class="px-4 py-2 text-slate-600 font-medium text-sm hover:bg-slate-200 rounded-lg">Cancel</button>
+                <button onclick="startImport()" id="btn-start-import"
+                    class="px-4 py-2 bg-slate-300 text-white font-bold text-sm rounded-lg cursor-not-allowed"
+                    disabled>Start Import</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Medication Quick View Modal (Wide Layout) -->
+    <div id="medication-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center fade-in">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeMedicationModal()"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-6xl mx-4 my-6 flex flex-col max-h-[90vh]">
+
+            <!-- Header -->
+            <div
+                class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                        <i class="fa-solid fa-pills text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-xl text-slate-800">Medications Board</h3>
+                        <p class="text-xs text-slate-500">Regimen for <span id="med-modal-patient-name"
+                                class="font-bold text-indigo-600">--</span></p>
+                    </div>
+                </div>
+                <button onclick="closeMedicationModal()" class="w-10 h-10 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" aria-label="Close medications board">
+                    <i class="fa-solid fa-times" aria-hidden="true"></i>
+                </button>
+            </div>
+
+            <!-- Mobile Tabs (Visible only on small screens) -->
+            <div class="lg:hidden flex border-b border-slate-100">
+                <button id="tab-btn-regular" onclick="switchMedTab('regular')"
+                    class="flex-1 py-3 text-sm font-bold text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50 transition-colors">
+                    Regular
+                </button>
+                <button id="tab-btn-prn" onclick="switchMedTab('prn')"
+                    class="flex-1 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50 transition-colors">
+                    PRN
+                </button>
+            </div>
+
+            <!-- Content Area -->
+            <div class="flex-1 overflow-y-auto p-4 lg:p-6 bg-slate-50/50">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+
+                    <!-- Left Column: Regular Meds -->
+                    <!-- Note: lg:flex ensures it is ALWAYS visible on desktop even if hidden class is added for mobile -->
+                    <div id="med-col-regular"
+                        class="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col h-full lg:flex">
+                        <div
+                            class="px-4 py-3 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between">
+                            <h4 class="font-bold text-slate-700 flex items-center gap-2">
+                                <i class="fas fa-clock text-blue-500"></i> Regular Medications
+                            </h4>
+                            <span class="text-xs font-mono bg-blue-100 text-blue-700 px-2 py-1 rounded">Scheduled</span>
+                        </div>
+                        <div class="p-4 flex-1 overflow-y-auto custom-scrollbar">
+                            <div id="medication-list-regular" class="text-slate-600 space-y-2">
+                                <!-- JS Injected List -->
+                            </div>
+                            <div id="no-reg-meds-msg"
+                                class="hidden h-full flex flex-col items-center justify-center text-slate-400 opacity-50 space-y-2 min-h-[150px]">
+                                <i class="fas fa-prescription-bottle-alt text-3xl"></i>
+                                <span class="text-sm">No regular medications active</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: PRN Meds -->
+                    <!-- Default hidden on mobile, lg:flex overrides on desktop -->
+                    <div id="med-col-prn"
+                        class="hidden lg:flex bg-white rounded-xl border border-slate-200 shadow-sm flex-col h-full">
+                        <div
+                            class="px-4 py-3 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between">
+                            <h4 class="font-bold text-slate-700 flex items-center gap-2">
+                                <i class="fas fa-hand-holding-medical text-amber-500"></i> PRN (As Needed)
+                            </h4>
+                            <span class="text-xs font-mono bg-amber-100 text-amber-700 px-2 py-1 rounded">On
+                                Demand</span>
+                        </div>
+                        <div class="p-4 flex-1 overflow-y-auto custom-scrollbar">
+                            <div id="medication-list-prn" class="text-slate-600 space-y-2">
+                                <!-- JS Injected List -->
+                            </div>
+                            <div id="no-prn-meds-msg"
+                                class="hidden h-full flex flex-col items-center justify-center text-slate-400 opacity-50 space-y-2 min-h-[150px]">
+                                <i class="fas fa-capsules text-3xl"></i>
+                                <span class="text-sm">No PRN medications active</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <!-- Footer -->
+            <div class="px-6 py-4 border-t border-slate-100 bg-white rounded-b-2xl flex justify-end">
+                <button onclick="closeMedicationModal()"
+                    class="px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors">
+                    Close Board
+                </button>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- Opioid Calculator Modal -->
+    <div id="calculator-modal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeCalculatorModal()"></div>
+        <div
+            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden m-4">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-teal-50">
+                <h3 class="font-bold text-lg text-teal-900"><i
+                        class="fa-solid fa-calculator mr-2 text-teal-500"></i>Opioid Converter</h3>
+                <button onclick="closeCalculatorModal()" class="text-teal-700 hover:text-teal-900"><i
+                        class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">From Drug</label>
+                        <select id="calc-from-drug"
+                            class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            <option value="morphine">Morphine</option>
+                            <option value="oxycodone">Oxycodone</option>
+                            <option value="fentanyl_td">Fentanyl Patch (mcg/hr)</option>
+                            <option value="hydromorphone">Hydromorphone</option>
+                            <option value="codeine">Codeine</option>
+                            <option value="tramadol">Tramadol</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Route</label>
+                        <select id="calc-from-route"
+                            class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            <option value="po">PO (Oral)</option>
+                            <option value="iv">IV/SC</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lbl-calc-dose">Daily Dose
+                        (mg/day)</label>
+                    <input type="number" id="calc-dose"
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        placeholder="0">
+                </div>
+
+                <div class="flex justify-center text-slate-300"><i class="fa-solid fa-arrow-down"></i></div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">To Drug</label>
+                        <select id="calc-to-drug"
+                            class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            <option value="morphine">Morphine</option>
+                            <option value="oxycodone">Oxycodone</option>
+                            <option value="fentanyl_td">Fentanyl Patch (mcg/hr)</option>
+                            <option value="hydromorphone">Hydromorphone</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Route</label>
+                        <select id="calc-to-route"
+                            class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            <option value="po">PO (Oral)</option>
+                            <option value="iv">IV/SC</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="bg-teal-50 p-4 rounded-xl border border-teal-100 text-center">
+                    <div class="text-xs text-teal-600 font-bold uppercase mb-1">Equianalgesic Dose</div>
+                    <div id="calc-result" class="text-2xl font-bold text-teal-800">0 mg</div>
+                    <div class="text-[10px] text-teal-500 mt-1">
+                        Cross-tolerance: <span id="calc-reduction">0%</span> reduction applied?
+                        <input type="checkbox" id="calc-apply-reduction" class="ml-1" checked> (Recommend -25%)
+                    </div>
+                </div>
+
+                <button onclick="calculateOpioid()"
+                    class="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-teal-200">Calculate</button>
+            </div>
+        </div>
+    </div>
+
+    </div>
+    </div>
+
+    <!-- ============ Settings ============ -->
+    <div id="settings-modal" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="absolute inset-0 bg-slate-900/40" onclick="closeSettingsModal()"></div>
+        <div class="relative w-full max-w-md bg-white rounded-2xl">
+            <div class="flex items-center justify-between px-5 pt-5 pb-3">
+                <h2 id="settings-title" class="text-lg font-bold">Settings</h2>
+                <button onclick="closeSettingsModal()" class="icon-btn" aria-label="Close settings"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            </div>
+            <div class="px-5 pb-5 grid gap-6">
+                <fieldset class="grid gap-2">
+                    <legend class="field-label mb-2">Appearance</legend>
+                    <div class="segmented w-full" role="group" aria-label="Appearance">
+                        <button class="flex-1 justify-center theme-btn" data-theme="system" onclick="setTheme('system')"><i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i> System</button>
+                        <button class="flex-1 justify-center theme-btn" data-theme="light" onclick="setTheme('light')"><i class="fa-regular fa-sun" aria-hidden="true"></i> Light</button>
+                        <button class="flex-1 justify-center theme-btn" data-theme="dark" onclick="setTheme('dark')"><i class="fa-regular fa-moon" aria-hidden="true"></i> Dark</button>
+                    </div>
+                </fieldset>
+
+                <fieldset class="grid gap-2">
+                    <legend class="field-label mb-2">Board density</legend>
+                    <div class="segmented w-full" role="group" aria-label="Board density">
+                        <button class="flex-1 justify-center density-btn" data-density="comfortable" onclick="setDensity('comfortable')">Comfortable</button>
+                        <button class="flex-1 justify-center density-btn" data-density="compact" onclick="setDensity('compact')">Compact</button>
+                    </div>
+                </fieldset>
+
+                <label class="flex items-center justify-between gap-4 p-3 rounded-xl border border-slate-200 cursor-pointer">
+                    <span>
+                        <span class="block font-semibold text-sm">Interface motion</span>
+                        <span class="block text-xs text-slate-500">Turn off to remove sliding and fading effects.</span>
+                    </span>
+                    <input type="checkbox" id="btn-anim-toggle" class="w-5 h-5" onchange="toggleAnimations()">
+                </label>
+
+                <div class="grid gap-2 pt-4 border-t border-slate-200">
+                    <h3 class="field-label">End of day</h3>
+                    <p class="text-sm text-slate-500">Archives every patient on the board to Past rounds, then empties the board for tomorrow's list.</p>
+                    <button onclick="triggerDailyReset()" id="btn-daily-reset" class="btn btn-danger-ghost btn-block">
+                        <i class="fa-solid fa-box-archive" aria-hidden="true"></i> Archive and start a new day
+                    </button>
+                </div>
+
+                <div class="grid gap-2 pt-4 border-t border-slate-200">
+                    <h3 class="field-label">Connection</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="testHistoryConnection()" class="btn btn-secondary btn-sm"><i class="fa-solid fa-stethoscope" aria-hidden="true"></i> Check connection</button>
+                        <button onclick="signOut()" id="btn-sign-out" class="btn btn-ghost btn-sm" hidden><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i> Sign out on this device</button>
+                    </div>
+                    <p class="text-xs text-slate-500" id="settings-version"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Discharge Plan Modal -->
+    <div id="discharge-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center fade-in">
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="closeDischargePlanModal()"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 my-6 flex flex-col max-h-[90vh]">
+
+            <div
+                class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+                <div>
+                    <h3 class="font-bold text-xl text-slate-800">Discharge Plan Generator</h3>
+                    <p class="text-xs text-slate-500">Review and edit medication categories</p>
+                </div>
+                <button onclick="closeDischargePlanModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Analgesics -->
+                    <div class="bg-white p-4 rounded-xl border border-rose-100 shadow-sm">
+                        <label
+                            class="text-xs font-bold text-rose-500 uppercase mb-2 block flex items-center justify-between">
+                            Analgesics (Pain)
+                            <i class="fa-solid fa-capsules"></i>
+                        </label>
+                        <textarea id="dp-analgesics" rows="3"
+                            class="w-full text-sm p-3 bg-rose-50/30 border border-rose-100 rounded-lg focus:ring-2 focus:ring-rose-500 focus:outline-none resize-none"></textarea>
+                    </div>
+
+                    <!-- Antiemetics -->
+                    <div class="bg-white p-4 rounded-xl border border-orange-100 shadow-sm">
+                        <label
+                            class="text-xs font-bold text-orange-500 uppercase mb-2 block flex items-center justify-between">
+                            Antiemetics (Nausea)
+                            <i class="fa-solid fa-mask-face"></i>
+                        </label>
+                        <textarea id="dp-antiemetics" rows="3"
+                            class="w-full text-sm p-3 bg-orange-50/30 border border-orange-100 rounded-lg focus:ring-2 focus:ring-orange-500 focus:outline-none resize-none"></textarea>
+                    </div>
+
+                    <!-- Anxiolytics -->
+                    <div class="bg-white p-4 rounded-xl border border-purple-100 shadow-sm">
+                        <label
+                            class="text-xs font-bold text-purple-500 uppercase mb-2 block flex items-center justify-between">
+                            Anxiolytics (Anxiety)
+                            <i class="fa-solid fa-brain"></i>
+                        </label>
+                        <textarea id="dp-anxiolytics" rows="3"
+                            class="w-full text-sm p-3 bg-purple-50/30 border border-purple-100 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none"></textarea>
+                    </div>
+
+                    <!-- Sleep Aids -->
+                    <div class="bg-white p-4 rounded-xl border border-indigo-100 shadow-sm">
+                        <label
+                            class="text-xs font-bold text-indigo-500 uppercase mb-2 block flex items-center justify-between">
+                            Sleep Aids / Sedatives
+                            <i class="fa-solid fa-moon"></i>
+                        </label>
+                        <textarea id="dp-sleep" rows="3"
+                            class="w-full text-sm p-3 bg-indigo-50/30 border border-indigo-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"></textarea>
+                    </div>
+                </div>
+
+                <!-- Anticoagulants (Full Width) -->
+                <div class="bg-white p-4 rounded-xl border border-red-100 shadow-sm">
+                    <label
+                        class="text-xs font-bold text-red-600 uppercase mb-2 block flex items-center justify-between">
+                        Anticoagulants (Blood Thinners)
+                        <i class="fa-solid fa-droplet"></i>
+                    </label>
+                    <textarea id="dp-anticoagulants" rows="2"
+                        class="w-full text-sm p-3 bg-red-50/30 border border-red-100 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none resize-none"></textarea>
+                </div>
+
+                <!-- Others -->
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Other Recommended
+                        Medications</label>
+                    <textarea id="dp-others" rows="4"
+                        class="w-full text-sm p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-400 focus:outline-none resize-none"></textarea>
+                </div>
+
+            </div>
+
+            <div class="px-6 py-4 border-t border-slate-100 bg-white rounded-b-2xl flex justify-between items-center">
+                <span id="dp-copy-status" class="text-sm font-medium text-green-600 opacity-0 transition-opacity">
+                    <i class="fa-solid fa-check mr-1"></i> Copied to clipboard!
+                </span>
+                <button onclick="copyDischargePlan()"
+                    class="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-indigo-300 transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-copy"></i>
+                    Copy Discharge Plan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Symptoms Assessment Modal -->
+    <div id="symptoms-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center fade-in">
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="closeSymptomsModal()"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 my-6 flex flex-col max-h-[90vh]">
+
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-rose-100 flex justify-between items-center bg-rose-50 rounded-t-2xl">
+                <div>
+                    <h3 class="font-bold text-xl text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-notes-medical text-rose-500"></i> Symptoms Assessment
+                    </h3>
+                    <p class="text-xs text-rose-600/70 font-semibold" id="sys-patient-name">Patient Name</p>
+                </div>
+                <button onclick="closeSymptomsModal()"
+                    class="w-8 h-8 rounded-full bg-white text-slate-400 hover:text-rose-600 shadow-sm flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Content -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+
+                <!-- Active Symptoms List -->
+                <section>
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Active Symptoms</h4>
+                    <div id="sys-active-list" class="space-y-3">
+                        <!-- Injected via JS -->
+                        <div class="text-center text-slate-400 text-sm py-4 italic">No active symptoms reported.</div>
+                    </div>
+                </section>
+
+                <!-- Performance Status (ECOG) -->
+                <section>
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Performance Status (ECOG)</h4>
+                    <div class="flex gap-2" id="ecog-selector">
+                        <button onclick="setECOG(0)" id="ecog-btn-0" class="flex-1 py-1.5 rounded-lg border border-slate-200 text-sm font-bold text-slate-600 hover:bg-violet-50 hover:text-violet-600 hover:border-violet-200 transition-all">0</button>
+                        <button onclick="setECOG(1)" id="ecog-btn-1" class="flex-1 py-1.5 rounded-lg border border-slate-200 text-sm font-bold text-slate-600 hover:bg-violet-50 hover:text-violet-600 hover:border-violet-200 transition-all">1</button>
+                        <button onclick="setECOG(2)" id="ecog-btn-2" class="flex-1 py-1.5 rounded-lg border border-slate-200 text-sm font-bold text-slate-600 hover:bg-violet-50 hover:text-violet-600 hover:border-violet-200 transition-all">2</button>
+                        <button onclick="setECOG(3)" id="ecog-btn-3" class="flex-1 py-1.5 rounded-lg border border-slate-200 text-sm font-bold text-slate-600 hover:bg-violet-50 hover:text-violet-600 hover:border-violet-200 transition-all">3</button>
+                        <button onclick="setECOG(4)" id="ecog-btn-4" class="flex-1 py-1.5 rounded-lg border border-slate-200 text-sm font-bold text-slate-600 hover:bg-violet-50 hover:text-violet-600 hover:border-violet-200 transition-all">4</button>
+                    </div>
+                    <p id="ecog-status-text" class="text-[11px] text-slate-500 mt-2 h-4 italic text-center">Select ECOG Status</p>
+                </section>
+                <hr class="my-4 border-slate-100">
+
+                <!-- Quick Add Grid -->
+                <section>
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Quick Add</h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="sys-quick-add">
+                        <!-- Buttons injected via JS -->
+                    </div>
+                </section>
+
+                <!-- Custom Add -->
+                <section>
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Add Custom</h4>
+                    <div class="flex gap-2">
+                        <input type="text" id="sys-custom-input"
+                            class="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 outline-none"
+                            placeholder="e.g. Hiccups">
+                        <button onclick="addCustomSymptom()"
+                            class="px-4 py-2 bg-slate-800 text-white text-sm font-bold rounded-lg hover:bg-slate-700">Add</button>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- Footer -->
+            <div
+                class="px-6 py-4 border-t border-slate-100 bg-white rounded-b-2xl flex justify-end gap-3 transition-colors">
+                <button onclick="closeSymptomsModal()"
+                    class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-50 rounded-lg">Cancel</button>
+                <button onclick="saveSymptomsData()"
+                    class="px-6 py-2 bg-rose-600 text-white font-bold rounded-lg hover:bg-rose-700 shadow-lg shadow-rose-200 flex items-center gap-2">
+                    <i class="fa-solid fa-check"></i> Save Assessment
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Command Center Modal -->
+    <div id="ai-hub-modal" class="fixed inset-0 z-[80] hidden">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onclick="closeAIHub()"></div>
+        <div
+            class="absolute inset-0 m-auto w-full max-w-4xl h-[85vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-entry">
+
+            <!-- Header -->
+            <div
+                class="px-8 py-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center text-white shadow-lg shadow-violet-200">
+                        <i class="fa-solid fa-wand-magic-sparkles text-2xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">AI Clinical Assistant</h2>
+                        <p class="text-slate-500 text-sm">Powered by Gemini Pro • <span id="ai-patient-name"
+                                class="font-bold text-violet-600">No Patient Selected</span></p>
+                    </div>
+                </div>
+                <button onclick="closeAIHub()"
+                    class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 flex overflow-hidden">
+                <!-- Sidebar Menu -->
+                <div class="w-64 bg-slate-50 border-r border-slate-100 p-4 flex flex-col gap-2">
+                    <p class="text-xs font-bold text-slate-400 uppercase px-2 mb-2 tracking-wider">Actions</p>
+
+                    <button onclick="triggerAIAction('summary')"
+                        class="text-left px-4 py-3 rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 transition-all group">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-file-medical-alt"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-700 text-sm">Summarize Case</h4>
+                                <p class="text-[10px] text-slate-400">Clinical Overview</p>
+                            </div>
+                        </div>
+                    </button>
+
+                    <button onclick="triggerAIAction('suggestions')"
+                        class="text-left px-4 py-3 rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 transition-all group">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-lightbulb"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-700 text-sm">Care Suggestions</h4>
+                                <p class="text-[10px] text-slate-400">Pall. Interventions</p>
+                            </div>
+                        </div>
+                    </button>
+
+                    <button onclick="triggerAIAction('discharge')"
+                        class="text-left px-4 py-3 rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 transition-all group">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-file-export"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-700 text-sm">Discharge Plan</h4>
+                                <p class="text-[10px] text-slate-400">Medication List</p>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- content area -->
+                <div class="flex-1 bg-white p-8 overflow-y-auto relative">
+                    <!-- Placeholder State -->
+                    <div id="ai-placeholder"
+                        class="h-full flex flex-col items-center justify-center text-center opacity-40">
+                        <i class="fa-solid fa-robot text-6xl text-slate-300 mb-4"></i>
+                        <h3 class="text-xl font-bold text-slate-600">Ready to Assist</h3>
+                        <p class="text-slate-400 max-w-xs mt-2">Select an action from the sidebar to analyze the current
+                            patient's data.</p>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="ai-loading" class="hidden h-full flex flex-col items-center justify-center text-center">
+                        <div
+                            class="w-16 h-16 border-4 border-violet-100 border-t-violet-600 rounded-full animate-spin mb-6">
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-700 animate-pulse">Analyzing Patient Data...</h3>
+                        <p class="text-slate-400 text-sm mt-1">Consulting Gemini Medical Model</p>
+                    </div>
+
+                    <!-- Result Area -->
+                    <div id="ai-result-container" class="hidden prose prose-slate max-w-none">
+                        <!-- Markdown content injected here -->
+                    </div>
+
+                    <!-- Resources Shared Drive Modal -->
+                    <div id="resources-modal"
+                        class="hidden fixed inset-0 z-[70] flex items-center justify-center fade-in">
+                        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="closeResourcesModal()">
+                        </div>
+                        <div
+                            class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 my-6 flex flex-col max-h-[85vh]">
+
+                            <div
+                                class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+                                <div>
+                                    <h3 class="font-bold text-xl text-slate-800"><i
+                                            class="fa-brands fa-google-drive text-blue-500 mr-2"></i>Shared Resources
+                                    </h3>
+                                    <p class="text-xs text-slate-500">Access guidelines and protocols from Drive</p>
+                                </div>
+                                <button onclick="closeResourcesModal()" class="text-slate-400 hover:text-slate-600">
+                                    <i class="fa-solid fa-times text-xl"></i>
+                                </button>
+                            </div>
+
+                            <div class="p-4 bg-slate-50 border-b border-slate-100 flex gap-2">
+                                <input type="text" id="drive-folder-id"
+                                    placeholder="Paste Google Drive Folder ID here..."
+                                    class="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <button onclick="fetchResources()"
+                                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-sm transition-colors shadow-sm">
+                                    <i class="fa-solid fa-sync mr-1"></i> Load Files
+                                </button>
+                            </div>
+
+                            <div class="flex-1 overflow-y-auto p-4 bg-slate-50/50">
+                                <div id="resources-list" class="space-y-2">
+                                    <!-- Resource Items Injected Here -->
+                                    <div class="text-center py-10 text-slate-400 flex flex-col items-center">
+                                        <i class="fa-solid fa-folder-open text-4xl mb-3 opacity-30"></i>
+                                        <p>Enter a Folder ID to view shared files.</p>
+                                    </div>
+                                </div>
+
+                                <div id="resources-loading"
+                                    class="hidden h-full flex flex-col items-center justify-center py-10">
+                                    <div
+                                        class="w-10 h-10 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4">
+                                    </div>
+                                    <p class="text-slate-500 font-bold">Fetching Files...</p>
+                                </div>
+                            </div>
+
+                            <div
+                                class="px-6 py-3 border-t border-slate-100 bg-white rounded-b-2xl text-xs text-slate-400 flex justify-between">
+                                <span><i class="fa-solid fa-info-circle mr-1"></i> Files open in a new tab</span>
+                                <span id="resources-count">0 items found</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Plan Action Sheet/Modal -->
+    <div id="plan-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePlanModal()"></div>
+        <div
+            class="bg-slate-50 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative z-10 animate-entry max-h-[85vh] flex flex-col">
+
+            <!-- Header -->
+            <div class="px-6 py-4 bg-white border-b border-slate-200 flex justify-between items-center">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800">Add to Care Plan</h3>
+                    <p class="text-sm text-slate-500">Select an intervention type</p>
+                </div>
+                <button onclick="closePlanModal()"
+                    class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600"><i
+                        class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="p-6 overflow-y-auto" id="plan-content-area">
+                <!-- GRID OF OPTIONS -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="plan-options-grid">
+                    <button onclick="showPlanDetail('medication')"
+                        class="flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:shadow-lg transition-all group">
+                        <div
+                            class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center text-xl mb-3 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                            <i class="fa-solid fa-pills"></i>
+                        </div>
+                        <span class="font-bold text-slate-700">Medication</span>
+                    </button>
+
+                    <button onclick="showPlanDetail('equipment')"
+                        class="flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-xl hover:border-cyan-500 hover:shadow-lg transition-all group">
+                        <div
+                            class="w-12 h-12 rounded-full bg-cyan-50 text-cyan-500 flex items-center justify-center text-xl mb-3 group-hover:bg-cyan-500 group-hover:text-white transition-colors">
+                            <i class="fa-solid fa-mask-ventilator"></i>
+                        </div>
+                        <span class="font-bold text-slate-700">Equipment</span>
+                    </button>
+
+                    <!-- NEW: Home Visit Button -->
+                    <button onclick="openHVCModal()"
+                        class="flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-xl hover:border-rose-500 hover:shadow-lg transition-all group">
+                        <div
+                            class="w-12 h-12 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center text-xl mb-3 group-hover:bg-rose-500 group-hover:text-white transition-colors">
+                            <i class="fa-solid fa-house-medical"></i>
+                        </div>
+                        <span class="font-bold text-slate-700">Home Visit</span>
+                    </button>
+
+                    <button onclick="saveQuickPlan('consult', 'Physiotherapy Consult')"
+                        class="flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-xl hover:border-emerald-500 hover:shadow-lg transition-all group">
+                        <div
+                            class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center text-xl mb-3 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                            <i class="fa-solid fa-person-walking"></i>
+                        </div>
+                        <span class="font-bold text-slate-700">Physiotherapy</span>
+                    </button>
+
+                    <button onclick="saveQuickPlan('consult', 'Psychosocial Consult')"
+                        class="flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-xl hover:border-rose-500 hover:shadow-lg transition-all group">
+                        <div
+                            class="w-12 h-12 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center text-xl mb-3 group-hover:bg-rose-500 group-hover:text-white transition-colors">
+                            <i class="fa-solid fa-brain"></i>
+                        </div>
+                        <span class="font-bold text-slate-700">Psychosocial</span>
+                    </button>
+
+                    <button onclick="saveQuickPlan('consult', 'Nutrition Consult')"
+                        class="flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-xl hover:border-orange-500 hover:shadow-lg transition-all group">
+                        <div
+                            class="w-12 h-12 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center text-xl mb-3 group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                            <i class="fa-solid fa-carrot"></i>
+                        </div>
+                        <span class="font-bold text-slate-700">Nutrition</span>
+                    </button>
+
+                    <button onclick="showPlanDetail('note')"
+                        class="col-span-2 md:col-span-1 flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-xl hover:border-slate-500 hover:shadow-lg transition-all group">
+                        <div
+                            class="w-12 h-12 rounded-full bg-slate-50 text-slate-500 flex items-center justify-center text-xl mb-3 group-hover:bg-slate-500 group-hover:text-white transition-colors">
+                            <i class="fa-solid fa-note-sticky"></i>
+                        </div>
+                        <span class="font-bold text-slate-700">Note / Other</span>
+                    </button>
+                </div>
+
+                <!-- SUB-VIEWS (Hidden by default) -->
+
+                <!-- Medication Sub-View -->
+                <div id="plan-sub-medication" class="hidden animate-entry">
+                    <button onclick="resetPlanView()"
+                        class="mb-4 text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center"><i
+                            class="fa-solid fa-arrow-left mr-1"></i> Back</button>
+
+                    <h4 class="font-bold text-lg text-indigo-900 mb-4">Medication Action</h4>
+
+                    <div class="grid grid-cols-2 gap-3 mb-6">
+                        <button onclick="selectMedAction('Add New')"
+                            class="p-3 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:border-indigo-200">Add
+                            New</button>
+                        <button onclick="selectMedAction('Opioid Escalation')"
+                            class="p-3 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:border-indigo-200">Opioid
+                            Escalation</button>
+                        <button onclick="selectMedAction('Opioid De-escalation')"
+                            class="p-3 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:border-indigo-200">De-escalation</button>
+                        <button onclick="selectMedAction('Opioid Rotation')"
+                            class="p-3 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:border-indigo-200">Opioid
+                            Rotation</button>
+                        <button onclick="selectMedAction('Modification')"
+                            class="p-3 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:border-indigo-200">Modification</button>
+                    </div>
+
+                    <div id="med-input-area" class="hidden">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Medication Details</label>
+                        <textarea id="plan-med-details"
+                            class="w-full p-3 bg-white border border-slate-200 rounded-xl mb-4 focus:ring-2 focus:ring-indigo-500 outline-none"
+                            rows="3" placeholder="e.g. Morphine 5mg SC Q4H PRN..."></textarea>
+                        <button onclick="savePlanItem('medication')"
+                            class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200">Save
+                            to Plan</button>
+                    </div>
+                </div>
+
+                <!-- Equipment Sub-View -->
+                <div id="plan-sub-equipment" class="hidden animate-entry">
+                    <button onclick="resetPlanView()"
+                        class="mb-4 text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center"><i
+                            class="fa-solid fa-arrow-left mr-1"></i> Back</button>
+                    <h4 class="font-bold text-lg text-cyan-900 mb-4">Request New Equipment</h4>
+                    <p class="text-xs text-slate-400 mb-4">Select device to open request form</p>
+
+                    <div class="space-y-2">
+                        <button onclick="openPEModal('O2 Generator')"
+                            class="w-full p-3 text-left bg-white border border-slate-200 rounded-lg font-medium hover:bg-cyan-50 hover:border-cyan-200 flex justify-between">
+                            <span>O2 Generator</span> <i class="fa-solid fa-chevron-right text-slate-300"></i>
+                        </button>
+                        <button onclick="openPEModal('Air Mattress')"
+                            class="w-full p-3 text-left bg-white border border-slate-200 rounded-lg font-medium hover:bg-cyan-50 hover:border-cyan-200 flex justify-between">
+                            <span>Air Mattress</span> <i class="fa-solid fa-chevron-right text-slate-300"></i>
+                        </button>
+                        <button onclick="openPEModal('Suction Machine')"
+                            class="w-full p-3 text-left bg-white border border-slate-200 rounded-lg font-medium hover:bg-cyan-50 hover:border-cyan-200 flex justify-between">
+                            <span>Suction Machine</span> <i class="fa-solid fa-chevron-right text-slate-300"></i>
+                        </button>
+                        <button onclick="openPEModal('Nebulizer')"
+                            class="w-full p-3 text-left bg-white border border-slate-200 rounded-lg font-medium hover:bg-cyan-50 hover:border-cyan-200 flex justify-between">
+                            <span>Nebulizer</span> <i class="fa-solid fa-chevron-right text-slate-300"></i>
+                        </button>
+                        <button onclick="openPEModal('LDD (Syringe Driver)')"
+                            class="w-full p-3 text-left bg-white border border-slate-200 rounded-lg font-medium hover:bg-cyan-50 hover:border-cyan-200 flex justify-between">
+                            <span>LDD (Syringe Driver)</span> <i class="fa-solid fa-chevron-right text-slate-300"></i>
+                        </button>
+                    </div>
+                    <button onclick="handleEquipmentSelection('LDD (Syringe Driver)')"
+                        class="w-full p-3 text-left bg-white border border-slate-200 rounded-lg font-medium hover:bg-cyan-50 hover:border-cyan-200 flex justify-between">
+                        <span>LDD (Syringe Driver)</span> <i class="fa-solid fa-external-link-alt text-slate-300"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Generic Note Sub-View -->
+            <div id="plan-sub-note" class="hidden animate-entry">
+                <button onclick="resetPlanView()"
+                    class="mb-4 text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center"><i
+                        class="fa-solid fa-arrow-left mr-1"></i> Back</button>
+                <h4 class="font-bold text-lg text-slate-800 mb-4" id="plan-note-title">Add Note</h4>
+
+                <textarea id="plan-note-text"
+                    class="w-full p-4 bg-white border border-slate-200 rounded-xl mb-4 focus:ring-2 focus:ring-slate-500 outline-none"
+                    rows="4" placeholder="Type your plan/consult details here..."></textarea>
+
+                <button onclick="savePlanItem('note')"
+                    class="w-full py-3 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 shadow-lg">Save
+                    to Plan</button>
+            </div>
+
+        </div>
+    </div>
+    </div>
+
+    <!-- Labs Modal (New) -->
+    <div id="labs-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center fade-in">
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-md" onclick="closeLabsModal()"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 my-6 flex flex-col max-h-[90vh]">
+
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-blue-100 flex justify-between items-center bg-blue-50 rounded-t-2xl">
+                <div>
+                    <h3 class="font-bold text-xl text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-flask text-blue-600"></i> Critical Labs
+                    </h3>
+                    <p class="text-xs text-blue-600/70 font-semibold" id="lab-patient-name">Patient Name</p>
+                </div>
+
+                <!-- View Toggle Buttons -->
+                <div class="bg-white rounded-lg p-1 border border-blue-100 shadow-sm flex gap-1">
+                    <button onclick="switchLabsView('image')" id="btn-labs-view-image"
+                        class="px-3 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-image"></i> Image
+                    </button>
+                    <button onclick="switchLabsView('manual')" id="btn-labs-view-manual"
+                        class="px-3 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-keyboard"></i> Manual
+                    </button>
+                </div>
+
+                <button onclick="closeLabsModal()"
+                    class="w-8 h-8 rounded-full bg-white text-slate-400 hover:text-blue-600 shadow-sm flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Content: Image View -->
+            <div id="labs-view-image"
+                class="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center min-h-[400px]">
+
+                <div class="text-center w-full max-w-lg">
+                    <!-- Click/Paste Target -->
+                    <!-- Click/Paste Target -->
+                    <div id="labs-paste-target"
+                        class="border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 p-10 cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-all group relative mb-6"
+                        onclick="document.getElementById('labs-upload-input-v2').click()" tabindex="0">
+                        <div class="space-y-4">
+                            <div
+                                class="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto text-slate-400 group-hover:text-blue-500 transition-colors">
+                                <i class="fa-solid fa-cloud-arrow-up text-3xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-700 text-lg">Click to Upload</h3>
+                                <p class="text-slate-500 text-sm">or Ctrl+V to Paste Image</p>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="file" id="labs-upload-input-v2" class="hidden" accept="image/*"
+                        onchange="handleLabsImageUpload(this.files[0])">
+
+                    <!-- Recent Images Previews (Simple List) -->
+                    <div id="labs-recent-list" class="grid grid-cols-4 gap-2">
+                        <!-- Preview Images -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content: Manual View -->
+            <div id="labs-view-manual" class="hidden flex-1 overflow-y-auto p-6 bg-slate-50/50">
+                <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3" id="labs-manual-grid">
+                    <!-- Injected Inputs -->
+                </div>
+
+                <!-- Custom/Other Labs -->
+                <div class="mt-8 border-t border-slate-200 pt-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="font-bold text-slate-700">Other Labs</h4>
+                        <button onclick="addCustomLabRow()" class="px-3 py-1.5 bg-slate-100 text-slate-600 font-bold rounded-lg text-xs hover:bg-slate-200 transition-colors flex items-center gap-1 shadow-sm border border-slate-200"><i class="fa-solid fa-plus"></i> Add Custom Test</button>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3" id="labs-custom-grid">
+                        <!-- Injected Custom Inputs -->
+                    </div>
+                </div>
+
+                <!-- Corrected Calcium Helper -->
+                <div class="mt-6 flex justify-start">
+                    <button onclick="toggleCalc()"
+                        class="px-4 py-2 bg-indigo-50 text-indigo-700 font-bold rounded-xl border border-indigo-100 hover:bg-indigo-100 shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-calculator"></i> Corrected Calcium
+                    </button>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div
+                class="px-6 py-4 border-t border-slate-100 bg-white rounded-b-2xl flex justify-end gap-3 transition-colors">
+                <button onclick="closeLabsModal()"
+                    class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-50 rounded-lg">Close</button>
+                <button onclick="saveLabsData()"
+                    class="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-lg shadow-blue-200 flex items-center gap-2">
+                    <i class="fa-solid fa-check"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- History / Archive Modal -->
+    <div id="history-modal" class="fixed inset-0 z-[70] hidden flex items-center justify-center fade-in">
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="closeHistoryModal()"></div>
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 relative z-10 animate-entry">
+            <h3 class="text-xl font-bold text-slate-800 mb-2">Time Machine</h3>
+            <p class="text-sm text-slate-500 mb-6">Select a past date to view the board state.</p>
+
+            <div id="history-loading" class="hidden py-8 text-center">
+                <i class="fa-solid fa-circle-notch fa-spin text-medical-500 mb-2"></i>
+                <p class="text-xs text-slate-400">Fetching timeline...</p>
+            </div>
+
+            <div id="history-list" class="space-y-2 max-h-60 overflow-y-auto mb-4">
+                <!-- Dates injected here -->
+            </div>
+
+            <button onclick="closeHistoryModal()"
+                class="w-full py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-200 transition-colors">
+                Cancel
+            </button>
+        </div>
+    </div>
+
+    <!-- Archive Mode Banner -->
+
+
+    <!-- Patient Specific History Modal -->
+    <div id="patient-history-modal" class="fixed inset-0 z-[80] hidden flex items-center justify-center fade-in">
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="closePatientHistoryModal()"></div>
+        <div
+            class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 relative z-10 animate-entry h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 shrink-0">
+                <h3 class="text-xl font-bold text-slate-800"><i
+                        class="fa-solid fa-clock-rotate-left mr-2 text-blue-500"></i>Patient History</h3>
+                <button onclick="closePatientHistoryModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div id="patient-history-loading" class="hidden flex-1 flex flex-col items-center justify-center">
+                <i class="fa-solid fa-circle-notch fa-spin text-3xl text-blue-500 mb-2"></i>
+                <p class="text-slate-400">Searching Archives...</p>
+            </div>
+
+            <div id="patient-history-content" class="flex-1 overflow-y-auto space-y-4 pr-2">
+                <!-- Timeline Items -->
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-slate-100 text-center text-xs text-slate-400 shrink-0">
+                Shows last 20 records.
+            </div>
+        </div>
+    </div>
+
+
+<!-- ============================================================ -->
+<!-- Port Cath Studio — ported modals (from jk, unmodified IDs)   -->
+<!-- ============================================================ -->
+
+<!-- Port Cath Studio: Session Config Modal -->
+<div class="pcs-modal-overlay" id="pcs-config-overlay" style="align-items:center;justify-content:center;" role="dialog" aria-modal="true" aria-label="Configure session days">
+  <div class="pcs-root" style="background:transparent;padding:20px;width:100%;max-width:820px;">
+    <div id="pcs-config-inner">
+      <!-- rendered by pcsRenderConfigCalendar() -->
+    </div>
+  </div>
+</div>
+
+<!-- Port Cath Studio: Move Modal -->
+<div class="pcs-modal-overlay" id="pcs-move-overlay" role="dialog" aria-modal="true" aria-labelledby="pcs-move-title">
+  <div class="pcs-modal">
+    <h3 id="pcs-move-title">Move Patient</h3>
+    <div class="pcs-modal-sub" id="pcs-move-patient-info"></div>
+    <div class="pcs-modal-field">
+      <label>Move to date</label>
+      <select id="pcs-move-date-select">
+        <option value="">Select session day</option>
+      </select>
+    </div>
+    <div class="pcs-modal-field">
+      <label>Reason <span style="color:var(--danger)">*</span></label>
+      <input type="text" id="pcs-move-reason" placeholder="Enter reason for moving..." autocomplete="off"/>
+      <div class="pcs-error-msg" id="pcs-move-reason-err">Reason is required (at least 3 characters)</div>
+    </div>
+    <div class="pcs-modal-actions">
+      <button class="pcs-btn" onclick="pcsCloseMoveModal()">Cancel</button>
+      <button class="pcs-btn pcs-btn-primary" onclick="pcsConfirmMove()">Confirm Move</button>
+    </div>
+  </div>
+</div>
+
+<!-- Port Cath Studio: Action Modal (cancel/noshow/apologize/restore) -->
+<div class="pcs-modal-overlay" id="pcs-action-overlay" role="dialog" aria-modal="true" aria-labelledby="pcs-action-title">
+  <div class="pcs-modal">
+    <h3 id="pcs-action-title">Confirm Action</h3>
+    <div class="pcs-modal-sub" id="pcs-action-patient-info"></div>
+    <div class="pcs-modal-field">
+      <label>Reason <span style="color:var(--danger)">*</span></label>
+      <textarea id="pcs-action-reason" rows="2" placeholder="Enter reason..."></textarea>
+      <div class="pcs-error-msg" id="pcs-action-reason-err">Reason is required (at least 3 characters)</div>
+    </div>
+    <div class="pcs-modal-actions">
+      <button class="pcs-btn" onclick="pcsCloseActionModal()">Cancel</button>
+      <button class="pcs-btn pcs-btn-primary" id="pcs-action-confirm-btn" onclick="pcsConfirmAction()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Port Cath Studio: Waiting List — Add/Edit Modal -->
+<div class="pcs-modal-overlay" id="pcs-waiting-add-overlay" role="dialog" aria-modal="true" aria-labelledby="pcs-waiting-add-title">
+  <div class="pcs-modal">
+    <h3 id="pcs-waiting-add-title">Add to Waiting List</h3>
+    <div class="pcs-modal-field">
+      <label>Patient Name <span style="color:var(--danger)">*</span></label>
+      <input type="text" id="pcs-waiting-name" autocomplete="off"/>
+    </div>
+    <div class="pcs-modal-field">
+      <label>File Number <span style="color:var(--danger)">*</span></label>
+      <input type="text" id="pcs-waiting-file" autocomplete="off"/>
+    </div>
+    <div class="pcs-modal-field">
+      <label>Weight (kg) <span style="color:var(--danger)">*</span></label>
+      <input type="number" step="0.1" id="pcs-waiting-weight" autocomplete="off"/>
+    </div>
+    <div class="pcs-modal-field">
+      <label>Phone Number</label>
+      <input type="tel" id="pcs-waiting-phone" autocomplete="off"/>
+    </div>
+    <div class="pcs-modal-field">
+      <label>Notes</label>
+      <textarea id="pcs-waiting-notes" rows="2"></textarea>
+    </div>
+    <div class="pcs-error-msg" id="pcs-waiting-add-err">Please fill in Name, File Number, and Weight.</div>
+    <div class="pcs-modal-actions">
+      <button class="pcs-btn" onclick="pcsCloseWaitingAddModal()">Cancel</button>
+      <button class="pcs-btn pcs-btn-primary" onclick="pcsConfirmWaitingAdd()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Port Cath Studio: Waiting List — Assign Date Modal -->
+<div class="pcs-modal-overlay" id="pcs-waiting-assign-overlay" role="dialog" aria-modal="true" aria-labelledby="pcs-waiting-assign-title">
+  <div class="pcs-modal">
+    <h3 id="pcs-waiting-assign-title">Assign Date</h3>
+    <div class="pcs-modal-sub" id="pcs-waiting-assign-info"></div>
+    <div class="pcs-modal-field">
+      <label>Procedure Date <span style="color:var(--danger)">*</span></label>
+      <input type="date" id="pcs-waiting-assign-date"/>
+    </div>
+    <div class="pcs-error-msg" id="pcs-waiting-assign-err">Please select a date.</div>
+    <div class="pcs-modal-actions">
+      <button class="pcs-btn" onclick="pcsCloseAssignDateModal()">Cancel</button>
+      <button class="pcs-btn pcs-btn-primary" onclick="pcsConfirmAssignDate()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Port Cath Studio — NEW modals (p1-specific, not from jk)     -->
+<!-- ============================================================ -->
+
+<!-- Port Cath Studio: Add Patient Modal (p1-specific, simplified) -->
+<div class="pcs-modal-overlay" id="pcs-add-overlay" role="dialog" aria-modal="true" aria-labelledby="pcs-add-title">
+  <div class="pcs-modal">
+    <h3 id="pcs-add-title">Add Port Cath Patient</h3>
+    <div class="pcs-modal-field">
+      <label>Patient Name <span style="color:var(--danger)">*</span></label>
+      <input type="text" id="pcs-add-name" autocomplete="off"/>
+    </div>
+    <div class="pcs-modal-field">
+      <label>File Number <span style="color:var(--danger)">*</span></label>
+      <input type="text" id="pcs-add-file" autocomplete="off"/>
+    </div>
+    <div class="pcs-modal-field">
+      <label>Procedure Date <span style="color:var(--danger)">*</span></label>
+      <input type="date" id="pcs-add-date"/>
+    </div>
+    <div class="pcs-modal-field">
+      <label>Weight (kg) <span style="color:var(--danger)">*</span></label>
+      <input type="number" step="0.1" id="pcs-add-weight" autocomplete="off"/>
+    </div>
+    <div class="pcs-modal-field">
+      <label>Notes</label>
+      <textarea id="pcs-add-notes" rows="2"></textarea>
+    </div>
+    <div class="pcs-modal-field">
+      <label>Phone Number</label>
+      <input type="tel" id="pcs-add-phone" autocomplete="off"/>
+    </div>
+    <div class="pcs-error-msg" id="pcs-add-err">Please fill in Name, File Number, Date, and Weight.</div>
+    <div class="pcs-modal-actions">
+      <button class="pcs-btn" onclick="pcsCloseAddModal()">Cancel</button>
+      <button class="pcs-btn pcs-btn-primary" onclick="pcsConfirmAdd()">Add to Schedule</button>
+    </div>
+  </div>
+</div>
+
+<!-- Port Cath Studio: Edit Patient Modal (p1-specific, simplified) -->
+<div class="pcs-modal-overlay" id="pcs-edit-overlay" role="dialog" aria-modal="true" aria-labelledby="pcs-edit-title">
+  <div class="pcs-modal">
+    <h3 id="pcs-edit-title">Edit Port Cath Patient</h3>
+    <div class="pcs-modal-field">
+      <label>Patient Name <span style="color:var(--danger)">*</span></label>
+      <input type="text" id="pcs-edit-name" autocomplete="off"/>
+    </div>
+    <div class="pcs-modal-field">
+      <label>File Number <span style="color:var(--danger)">*</span></label>
+      <input type="text" id="pcs-edit-file" autocomplete="off"/>
+    </div>
+    <div class="pcs-modal-field">
+      <label>Procedure Date <span style="color:var(--danger)">*</span></label>
+      <input type="date" id="pcs-edit-date"/>
+    </div>
+    <div class="pcs-modal-field">
+      <label>Weight (kg) <span style="color:var(--danger)">*</span></label>
+      <input type="number" step="0.1" id="pcs-edit-weight" autocomplete="off"/>
+    </div>
+    <div class="pcs-modal-field">
+      <label>Notes</label>
+      <textarea id="pcs-edit-notes" rows="2"></textarea>
+    </div>
+    <div class="pcs-error-msg" id="pcs-edit-err">Please fill in Name, File Number, Date, and Weight.</div>
+    <div class="pcs-modal-actions">
+      <button class="pcs-btn" onclick="pcsCloseEditModal()">Cancel</button>
+      <button class="pcs-btn pcs-btn-primary" onclick="pcsConfirmEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+    <!-- ========================================== -->
+    <!-- NEW: Home Visit Modal (HVC) -->
+    <!-- ========================================== -->
+    <div id="hvc-modal" class="fixed inset-0 z-[70] hidden flex items-center justify-center fade-in">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeHVCModal()"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 my-6 flex flex-col max-h-[90vh]">
+
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-rose-100 flex justify-between items-center bg-rose-50 rounded-t-2xl shrink-0">
+                <div>
+                    <h3 class="font-bold text-xl text-slate-800"><i
+                            class="fa-solid fa-house-medical text-rose-500 mr-2"></i>New Home Visit Patient</h3>
+                    <p class="text-xs text-rose-600/70 font-semibold" id="hvc-header-subtitle">Register a new patient
+                        for home visit</p>
+                </div>
+                <button onclick="closeHVCModal()" class="text-slate-400 hover:text-rose-600 text-xl"><i
+                        class="fa-solid fa-times"></i></button>
+            </div>
+
+            <div class="flex-1 min-h-0 overflow-y-auto p-6 bg-slate-50/50">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col gap-6">
+                    
+                    <h4 class="text-sm font-bold text-slate-600 uppercase flex items-center gap-2"><i class="fa-solid fa-clipboard-user"></i> Patient Registration Details</h4>
+                    
+                    <!-- Consolidated Fields Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Pt Name</label>
+                            <input type="text" id="hvc-name" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Pt file Num.</label>
+                            <input type="text" id="hvc-id" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Gender</label>
+                            <select id="hvc-gender" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                                <option value="">Select...</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Age</label>
+                            <input type="number" id="hvc-age" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                        </div>
+                        
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">phone No.</label>
+                            <input type="text" id="hvc-phone" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Social status</label>
+                            <select id="hvc-social" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                                <option value="">Select...</option>
+                                <option value="Married">Married</option>
+                                <option value="Single">Single</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Adress (City/Area)</label>
+                            <select id="hvc-city" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                                <option value="">Select Area...</option>
+                                <option value="Hebron">Hebron</option>
+                                <option value="Jericho">Jericho</option>
+                                <option value="Jerusalem">Jerusalem</option>
+                                <option value="Bethlehem">Bethlehem</option>
+                                <option value="Ramallah">Ramallah</option>
+                                <option value="Nablus">Nablus</option>
+                                <option value="Jenin">Jenin</option>
+                                <option value="Tulkarm">Tulkarm</option>
+                                <option value="Qalqilya">Qalqilya</option>
+                                <option value="Salfit">Salfit</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Home Address</label>
+                            <input type="text" id="hvc-address" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Hospital</label>
+                            <select id="hvc-hospital" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                                <option value="">Select...</option>
+                                <option value="AVH">AVH</option>
+                                <option value="Service">Service</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Primary Physicien</label>
+                            <select id="hvc-doctor" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                                <option value="">Select Doctor...</option>
+                                <option value="Amer Zughaier">Amer Zughaier</option>
+                                <option value="Bashir Abu Aqeel">Bashir Abu Aqeel</option>
+                                <option value="Fadel Rawashdeh">Fadel Rawashdeh</option>
+                                <option value="Fadi Al Atrash">Fadi Al Atrash</option>
+                                <option value="Farah Awad">Farah Awad</option>
+                                <option value="Hamdi Janazreh">Hamdi Janazreh</option>
+                                <option value="Hanna Qahoush">Hanna Qahoush</option>
+                                <option value="Ibraheem Eid">Ibraheem Eid</option>
+                                <option value="Jalal Qawasmi">Jalal Qawasmi</option>
+                                <option value="Moath Badawi">Moath Badawi</option>
+                                <option value="Ola Abu Laban">Ola Abu Laban</option>
+                                <option value="Salem Ballan">Salem Ballan</option>
+                                <option value="Waseem Sharabate">Waseem Sharabate</option>
+                                <option value="Yousef Hammamreh">Yousef Hammamreh</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Diagnosis</label>
+                            <select id="hvc-diagnosis-cat" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                                <option value="">Select Diagnosis...</option>
+                                <option value="Brain Cancers">Brain Cancers</option>
+                                <option value="Breast Cancers">Breast Cancers</option>
+                                <option value="Colorectal cancers">Colorectal cancers</option>
+                                <option value="Endocrine Cancers">Endocrine Cancers</option>
+                                <option value="Gastric Cancers">Gastric Cancers</option>
+                                <option value="Genitourinary Cancers">Genitourinary Cancers</option>
+                                <option value="Gynecological Cancers">Gynecological Cancers</option>
+                                <option value="Head and Neck Cancers">Head and Neck Cancers</option>
+                                <option value="Hematological cancer">Hematological cancer</option>
+                                <option value="Lung Cancers">Lung Cancers</option>
+                                <option value="Lymphomas">Lymphomas</option>
+                                <option value="Panceriatic cancer">Panceriatic cancer</option>
+                                <option value="Prostate Cancers">Prostate Cancers</option>
+                                <option value="Rare and Mixed Cancers">Rare and Mixed Cancers</option>
+                                <option value="Sarcomas">Sarcomas</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Specific Diagnosis</label>
+                            <input type="text" id="hvc-diagnosis-detail" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Stage of Disease</label>
+                            <select id="hvc-stage" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                                <option value="">Select Stage...</option>
+                                <option value="Stage 1">Stage 1</option>
+                                <option value="Stage 2">Stage 2</option>
+                                <option value="Stage 3">Stage 3</option>
+                                <option value="Stage 4">Stage 4</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Intent of care</label>
+                            <select id="hvc-intent" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                                <option value="">Select...</option>
+                                <option value="Curative">Curative</option>
+                                <option value="Palliative">Palliative</option>
+                                <option value="End of Life">End of Life</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Site of Referral</label>
+                            <input type="text" id="hvc-referral" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">priority</label>
+                            <select id="hvc-priority" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                                <option value="">Select...</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                            </select>
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">ECOG</label>
+                            <input type="text" id="hvc-ecog" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">PPI</label>
+                            <input type="text" id="hvc-ppi" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">PPS</label>
+                            <input type="text" id="hvc-pps" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">number of visits</label>
+                            <input type="number" id="hvc-visits" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">date (Registration Date)</label>
+                            <input type="date" id="hvc-date-reg" class="w-full p-1 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Servival Status</label>
+                            <select id="hvc-survival" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                                <option value="Alive">Alive</option>
+                                <option value="Deceased">Deceased</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Date of death</label>
+                            <input type="date" id="hvc-date-death" class="w-full p-1 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-500">Place of death</label>
+                            <input type="text" id="hvc-place-death" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions strictly inside the main container block -->
+                    <div class="mt-4 pt-6 border-t border-slate-100 flex justify-end gap-3 shrink-0">
+                        <div id="hvc-status" class="mr-auto text-sm font-bold text-slate-500 flex items-center hidden">
+                            <i class="fa-solid fa-circle-notch fa-spin mr-2 text-rose-500"></i> Sending to HVC App...
+                        </div>
+                        <button onclick="closeHVCModal()"
+                            class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg border border-transparent font-medium transition-colors">Cancel</button>
+                        <button onclick="submitHVCForm()"
+                            class="px-6 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg shadow-lg shadow-rose-200 flex items-center gap-2 transition-colors shrink-0">
+                            <i class="fa-solid fa-paper-plane"></i> Register Patient
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- NEW: Equipment Modal (PE) -->
+    <!-- ========================================== -->
+    <div id="pe-modal" class="fixed inset-0 z-[70] hidden flex items-center justify-center fade-in">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePEModal()"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 my-6 flex flex-col max-h-[90vh]">
+
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-cyan-100 flex justify-between items-center bg-cyan-50 rounded-t-2xl">
+                <div>
+                    <h3 class="font-bold text-xl text-slate-800"><i
+                            class="fa-solid fa-mask-ventilator text-cyan-600 mr-2"></i>New Device Record</h3>
+                    <p class="text-xs text-cyan-600/70 font-semibold">Request equipment for patient</p>
+                </div>
+                <button onclick="closePEModal()" class="text-slate-400 hover:text-cyan-600 text-xl"><i
+                        class="fa-solid fa-times"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 bg-slate-50/50">
+                <div
+                    class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 grid grid-cols-1 md:grid-cols-4 gap-6">
+
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-slate-500">Patient Name</label>
+                        <input type="text" id="pe-name"
+                            class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50" readonly>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-slate-500">Patient ID</label>
+                        <input type="text" id="pe-id"
+                            class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50" readonly>
+                    </div>
+                    <div class="space-y-1 md:col-span-2">
+                        <label class="text-xs font-bold text-slate-500">Medical Diagnosis</label>
+                        <input type="text" id="pe-diagnosis"
+                            class="w-full p-2 border border-slate-200 rounded-lg text-sm">
+                    </div>
+
+                    <div class="space-y-1 md:col-span-2">
+                        <label class="text-xs font-bold text-slate-500">Area / Region</label>
+                        <select id="pe-area" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white">
+                            <option value="">Select...</option>
+                            <option value="Hebron">Hebron</option>
+                            <option value="Jericho">Jericho</option>
+                            <option value="Jerusalem">Jerusalem</option>
+                            <option value="Bethlehem">Bethlehem</option>
+                            <option value="Ramallah">Ramallah</option>
+                            <option value="Nablus">Nablus</option>
+                            <option value="Jenin">Jenin</option>
+                            <option value="Tulkarm">Tulkarm</option>
+                            <option value="Qalqilya">Qalqilya</option>
+                            <option value="Salfit">Salfit</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1 md:col-span-2">
+                        <label class="text-xs font-bold text-slate-500">Contact Number</label>
+                        <input type="text" id="pe-phone" class="w-full p-2 border border-slate-200 rounded-lg text-sm">
+                    </div>
+
+                    <!-- Recipient -->
+                    <h4
+                        class="md:col-span-4 mt-2 text-xs font-bold text-slate-400 uppercase border-b border-slate-100 pb-1">
+                        Recipient Info</h4>
+
+                    <div class="space-y-1 md:col-span-2">
+                        <label class="text-xs font-bold text-slate-500">Device Recipient Name</label>
+                        <input type="text" id="pe-recipient"
+                            class="w-full p-2 border border-slate-200 rounded-lg text-sm">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-slate-500">Recipient ID</label>
+                        <input type="text" id="pe-recipient-id"
+                            class="w-full p-2 border border-slate-200 rounded-lg text-sm">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-slate-500">Relationship</label>
+                        <input type="text" id="pe-relationship"
+                            class="w-full p-2 border border-slate-200 rounded-lg text-sm">
+                    </div>
+
+                    <!-- Device Info -->
+                    <h4
+                        class="md:col-span-4 mt-2 text-xs font-bold text-slate-400 uppercase border-b border-slate-100 pb-1">
+                        Device Details</h4>
+
+                    <div class="space-y-1 md:col-span-2">
+                        <label class="text-xs font-bold text-slate-500">Required Device</label>
+                        <select id="pe-device"
+                            class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white font-bold text-cyan-700">
+                            <option value="">Select...</option>
+                            <option value="O2 Generator">O2 Generator</option>
+                            <option value="Nebulizer">Nebulizer</option>
+                            <option value="Suction Machine">Suction Machine</option>
+                            <option value="Air Mattress">Air Mattress</option>
+                            <option value="Lymphatic Drainage Device">Lymphatic Drainage Device</option>
+                            <option value="Commode">Commode</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1 md:col-span-2">
+                        <label class="text-xs font-bold text-slate-500">Receipt Status</label>
+                        <select id="pe-status" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white">
+                            <option value="Pending">Pending</option>
+                            <option value="Received">Received</option>
+                            <option value="Delivered">Delivered</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-slate-500">Delivery Date</label>
+                        <input type="date" id="pe-date-delivery"
+                            class="w-full p-2 border border-slate-200 rounded-lg text-sm">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-slate-500">Return Date (Expected)</label>
+                        <input type="date" id="pe-date-return"
+                            class="w-full p-2 border border-slate-200 rounded-lg text-sm">
+                    </div>
+
+                    <div class="md:col-span-4 space-y-1">
+                        <label class="text-xs font-bold text-slate-500">Notes</label>
+                        <textarea id="pe-notes" rows="3"
+                            class="w-full p-3 border border-slate-200 rounded-lg text-sm resize-none"></textarea>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="px-6 py-4 border-t border-slate-100 bg-white rounded-b-2xl flex justify-end gap-3">
+                <div id="pe-status-msg" class="mr-auto text-sm font-bold text-slate-500 flex items-center hidden">
+                    <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Sending to Equipment App...
+                </div>
+                <button onclick="closePEModal()"
+                    class="px-4 py-2 text-slate-500 hover:bg-slate-50 rounded-lg border border-transparent font-medium">Cancel</button>
+                <button onclick="submitPEForm()"
+                    class="px-6 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg shadow-lg shadow-cyan-200 flex items-center gap-2">
+                    <i class="fa-solid fa-save"></i> Save Record
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- Note Editor Modal -->
+    <div id="note-editor-modal" class="fixed inset-0 z-[80] hidden flex items-center justify-center fade-in">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeNoteEditor()"></div>
+        <div
+            class="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 my-6 flex flex-col max-h-[90vh] animate-entry">
+
+            <!-- Header -->
+            <div
+                class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+                <div>
+                    <input type="text" id="note-title-input" placeholder="Note Title..."
+                        class="bg-transparent text-xl font-bold text-slate-800 placeholder-slate-400 focus:outline-none w-full border-b border-transparent focus:border-slate-300 transition-colors">
+                    <div class="flex items-center gap-3 mt-1">
+                        <span id="note-date-display" class="text-xs text-slate-400 font-mono"></span>
+                        <select id="note-type-select"
+                            class="text-xs font-bold bg-white border border-slate-200 rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-medical-500">
+                            <option value="meeting">Meeting Note</option>
+                            <option value="study">Study Topic</option>
+                            <option value="pearl">Clinical Pearl</option>
+                            <option value="guideline">Guideline</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="closeNoteEditor()"
+                    class="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 transition-colors">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Editor Toolbar (Simple) -->
+            <div class="px-4 py-2 bg-slate-50 border-b border-slate-100 flex gap-2 overflow-x-auto">
+                <button onclick="document.execCommand('bold')"
+                    class="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded" title="Bold"><i
+                        class="fa-solid fa-bold"></i></button>
+                <button onclick="document.execCommand('italic')"
+                    class="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded" title="Italic"><i
+                        class="fa-solid fa-italic"></i></button>
+                <button onclick="document.execCommand('underline')"
+                    class="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded" title="Underline"><i
+                        class="fa-solid fa-underline"></i></button>
+                <div class="w-px h-6 bg-slate-300 mx-1"></div>
+                <button onclick="document.execCommand('insertUnorderedList')"
+                    class="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded" title="Bullet List"><i
+                        class="fa-solid fa-list-ul"></i></button>
+                <button onclick="document.execCommand('insertOrderedList')"
+                    class="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded" title="Numbered List"><i
+                        class="fa-solid fa-list-ol"></i></button>
+                <div class="w-px h-6 bg-slate-300 mx-1"></div>
+                <!-- Image Upload Trigger (Hidden Input) -->
+                <label class="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded cursor-pointer"
+                    title="Insert Image">
+                    <i class="fa-regular fa-image"></i>
+                    <input type="file" class="hidden" accept="image/*" onchange="
+                        if(this.files && this.files[0]) {
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                                const img = `<br><img src='${e.target.result}' class='max-w-full rounded-lg shadow-sm my-2'><br>`;
+                                document.execCommand('insertHTML', false, img);
+                            };
+                            reader.readAsDataURL(this.files[0]);
+                        }
+                    ">
+                </label>
+            </div>
+
+            <!-- Content Area -->
+            <div class="flex-1 overflow-y-auto p-6 bg-white cursor-text" id="note-content-editor" contenteditable="true"
+                onpaste="handleNoteImagePaste(event)"
+                class="prose prose-sm max-w-none focus:outline-none min-h-[300px]">
+            </div>
+
+            <!-- Footer -->
+            <div
+                class="px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-between items-center">
+                <button id="btn-delete-note" onclick="deleteCurrentNote()"
+                    class="text-red-500 hover:text-red-700 text-sm font-bold flex items-center gap-2 hidden">
+                    <i class="fa-solid fa-trash"></i> Delete Note
+                </button>
+                <div class="flex gap-3 ml-auto">
+                    <button onclick="closeNoteEditor()"
+                        class="px-4 py-2 text-slate-500 hover:bg-slate-200 rounded-lg font-medium transition-colors">Cancel</button>
+                    <button onclick="saveNote()"
+                        class="px-6 py-2 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold rounded-lg shadow-sm transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-save"></i> Save Note
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+
+</html>

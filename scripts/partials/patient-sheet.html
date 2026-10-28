@@ -1,0 +1,115 @@
+    <!-- ============ Patient sheet ============ -->
+    <div id="patient-modal" class="fixed inset-0 hidden" role="dialog" aria-modal="true" aria-labelledby="modal-patient-name" data-sheet>
+        <div class="absolute inset-0 dlg-backdrop" onclick="closeModal()"></div>
+        <div class="sheet translate-x-full" id="modal-panel">
+            <div class="sheet-head">
+                <div class="sheet-room">
+                    <label for="modal-patient-room">Room</label>
+                    <input type="text" id="modal-patient-room" class="unstyled" placeholder="—" autocomplete="off" maxlength="8">
+                </div>
+                <div class="min-w-0">
+                    <label for="modal-patient-name" class="sr-only">Patient name</label>
+                    <input type="text" id="modal-patient-name" class="sheet-name unstyled" placeholder="Patient name" dir="auto" autocomplete="off" required>
+                    <div class="sheet-sub">
+                        <span class="inline-field">
+                            <label for="modal-patient-code">File no.</label>
+                            <input type="text" id="modal-patient-code" class="unstyled" placeholder="—" autocomplete="off">
+                        </span>
+                        <span class="inline-field">
+                            <label for="modal-patient-age">Age</label>
+                            <input type="number" id="modal-patient-age" class="unstyled w-age" min="0" max="130" inputmode="numeric" placeholder="—">
+                        </span>
+                        <span id="modal-ward-label" class="inline-flex items-center gap-1.5 text-slate-500"></span>
+                    </div>
+                </div>
+                <div class="sheet-tools">
+                    <button onclick="handleManualSummary()" class="icon-btn" title="Copy a text summary" aria-label="Copy a text summary of this patient">
+                        <i class="fa-regular fa-copy" aria-hidden="true"></i>
+                    </button>
+                    <button onclick="handleStandaloneSummary()" class="icon-btn" title="AI summary" aria-label="Write an AI summary">
+                        <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+                    </button>
+                    <button onclick="closeModal()" class="icon-btn" aria-label="Close patient" title="Close (Esc)">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="sheet-body">
+                <div class="quick-tiles">
+                    <button class="tile t-labs" onclick="openLabsModal(appData.currentPatient)">
+                        <i class="fa-solid fa-flask" aria-hidden="true"></i>
+                        <span class="tile-title">Labs</span><span class="tile-sub" id="tile-labs-sub">Values and images</span>
+                    </button>
+                    <button class="tile t-sym" onclick="openSymptomsModal(appData.currentPatient)">
+                        <i class="fa-solid fa-notes-medical" aria-hidden="true"></i>
+                        <span class="tile-title">Symptoms</span><span class="tile-sub" id="tile-sym-sub">ECOG and symptom review</span>
+                    </button>
+                    <button class="tile t-plan" onclick="openPlanModal(appData.currentPatient)">
+                        <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                        <span class="tile-title">Plan</span><span class="tile-sub" id="tile-plan-sub">Meds, equipment, consults</span>
+                    </button>
+                    <button class="tile t-hist" onclick="appData.currentPatient && openPatientHistory(appData.currentPatient.id)">
+                        <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+                        <span class="tile-title">History</span><span class="tile-sub">Previous rounds</span>
+                    </button>
+                </div>
+
+                <section id="modal-plan-section" class="sheet-section hidden" aria-labelledby="plan-h">
+                    <div class="sheet-section-head"><h3 class="sheet-section-title" id="plan-h">Active plan</h3></div>
+                    <div id="modal-plan-list" class="grid gap-2"></div>
+                </section>
+
+                <div class="sheet-grid-2">
+                    <div class="field">
+                        <label class="field-label" for="inp-diagnosis">Diagnosis</label>
+                        <input id="inp-diagnosis" type="text" class="input" dir="auto" autocomplete="off">
+                    </div>
+                    <div class="field">
+                        <label class="field-label" for="inp-provider">Responsible doctor</label>
+                        <input id="inp-provider" type="text" class="input" dir="auto" autocomplete="off" list="provider-options">
+                        <datalist id="provider-options"></datalist>
+                    </div>
+                </div>
+
+                <section class="sheet-section">
+                    <div class="sheet-section-head">
+                        <label class="sheet-section-title" for="inp-treatment">Current treatment</label>
+                    </div>
+                    <textarea id="inp-treatment" rows="2" class="textarea" dir="auto"></textarea>
+                </section>
+
+                <section class="sheet-section" aria-labelledby="meds-h">
+                    <div class="sheet-section-head">
+                        <h3 class="sheet-section-title" id="meds-h">Medications</h3>
+                        <button onclick="openDischargePlanModal()" class="btn btn-ghost btn-sm">
+                            <i class="fa-solid fa-file-prescription" aria-hidden="true"></i> Discharge plan
+                        </button>
+                    </div>
+                    <div class="sheet-grid-2">
+                        <div class="field">
+                            <label class="field-label" for="inp-medications-regular">Regular</label>
+                            <textarea id="inp-medications-regular" rows="5" class="textarea meds" placeholder="One per line. Pasting from the HIS cleans the list." spellcheck="false" dir="auto"></textarea>
+                        </div>
+                        <div class="field">
+                            <label class="field-label" for="inp-medications-prn">As needed (PRN)</label>
+                            <textarea id="inp-medications-prn" rows="5" class="textarea meds" placeholder="One per line" spellcheck="false" dir="auto"></textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="sheet-section">
+                    <div class="sheet-section-head">
+                        <label class="sheet-section-title" for="inp-notes">Handover notes</label>
+                    </div>
+                    <textarea id="inp-notes" rows="4" class="textarea notes" placeholder="What the next shift needs to know" dir="auto"></textarea>
+                </section>
+            </div>
+
+            <div class="sheet-foot">
+                <span id="save-status" role="status" aria-live="polite"><i class="fa-solid fa-check text-green-600" aria-hidden="true"></i> Saved</span>
+                <span id="last-edited" class="tabular"></span>
+            </div>
+        </div>
+    </div>
+

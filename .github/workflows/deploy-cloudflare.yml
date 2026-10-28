@@ -1,0 +1,24 @@
+# Builds the frontend and publishes dist/ to Cloudflare Pages.
+# Needs two repository secrets: CLOUDFLARE_API_TOKEN (permission: Cloudflare Pages Edit)
+# and CLOUDFLARE_ACCOUNT_ID. See docs/DEPLOYMENT.md.
+name: Deploy to Cloudflare Pages
+# Manual only (Actions -> Run workflow); GitHub Pages is the default host (deploy-pages.yml).
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npx wrangler@3 pages deploy dist --project-name=palliative-rounds --branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
