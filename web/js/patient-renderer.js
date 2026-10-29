@@ -128,7 +128,7 @@ function renderBedCard(p, index) {
             </div>
 
             ${p.diagnosis || p.treatment ? `<div class="grid gap-1">
-                ${p.diagnosis ? `<p class="bed-dx bidi"><span class="bed-label">Dx</span>${escHtml(p.diagnosis)}</p>` : ''}
+                ${p.diagnosis ? `<p class="bed-dx bidi" title="${escHtml(p.diagnosis)}"><span class="bed-label">Dx</span>${escHtml(p.diagnosis)}</p>` : ''}
                 ${p.treatment ? `<p class="bed-rx bidi"><span class="bed-label">Rx</span>${escHtml(p.treatment)}</p>` : ''}
             </div>` : ''}
 

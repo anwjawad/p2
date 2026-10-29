@@ -354,7 +354,8 @@
 .board {
   display: grid; gap: 14px;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
-  align-items: start;
+  grid-auto-rows: 1fr; /* every card on the board is the same height */
+  align-items: stretch;
 }
 :root[data-density="compact"] .board { gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
 
@@ -414,7 +415,7 @@
 }
 .bed[data-selected="true"] .bed-check { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
-.bed-dx { font-size: .9rem; color: var(--ink); line-height: 1.45; }
+.bed-dx { font-size: .9rem; color: var(--ink); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; } /* full text in the sheet */
 .bed-rx { font-size: .84rem; color: var(--ink-2); line-height: 1.45; white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .bed-label { font-size: .72rem; font-weight: 600; color: var(--ink-3); margin-inline-end: .35rem; }
 .bed-chips { display: flex; flex-wrap: wrap; gap: 4px; }
