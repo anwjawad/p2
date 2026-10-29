@@ -40,6 +40,8 @@ function renderPatientsGrid(patients) {
     grid.removeAttribute('aria-busy');
     if (!patients || patients.length === 0) return;
 
+    // Every board (ward, search results, past rounds) reads in room order.
+    if (typeof sortPatients === 'function') patients = sortPatients(patients);
     const frag = document.createDocumentFragment();
     patients.forEach((p, index) => {
         frag.appendChild(appData.pharmacyMode ? renderPharmacyCard(p, index) : renderBedCard(p, index));

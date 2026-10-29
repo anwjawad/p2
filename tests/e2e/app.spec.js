@@ -57,6 +57,9 @@ test('search covers all wards and ignores Arabic diacritics / alef forms', async
   await expect(page.locator('article.bed')).toHaveCount(1);
   await page.locator('#search-input').fill('مَحمود'); // with a diacritic
   await expect(page.locator('article.bed')).toHaveCount(1);
+  await page.locator('#search-input').fill('cancer'); // results from several wards still read in room order
+  await expect(page.locator('article.bed')).toHaveCount(5);
+  expect(await page.locator('.bed-room').allTextContents()).toEqual(['121', '206', '208', '302', '305']);
   await page.locator('#search-input').fill('zzzz');
   await expect(page.locator('#patients-grid .empty')).toContainText('No patient matches');
   await page.locator('#search-input').press('Escape');

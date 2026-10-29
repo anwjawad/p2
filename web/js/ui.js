@@ -265,8 +265,12 @@ function selectWard(wardName) {
 
 /** Order the board like a ward round: by room number, then name. */
 function sortPatients(list) {
-    return [...list].sort((a, b) => String(a.room || '').localeCompare(String(b.room || ''), undefined, { numeric: true })
-        || String(a.name || '').localeCompare(String(b.name || '')));
+    const room = p => String(p.room || '').trim().toUpperCase();
+    return [...list].sort((a, b) => {
+        const ra = room(a), rb = room(b);
+        if (!ra !== !rb) return ra ? -1 : 1; // patients without a room go last
+        return ra.localeCompare(rb, undefined, { numeric: true }) || String(a.name || '').localeCompare(String(b.name || ''));
+    });
 }
 
 function refreshBoard() {
